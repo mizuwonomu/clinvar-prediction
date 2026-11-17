@@ -2,6 +2,24 @@
 
 CSV từ GitHub của Kevin Arvai trùng từng byte với CSV trong ZIP tải từ Kaggle. Bản gốc được lưu trong `source/` với SHA-256 `53061e207d437af397028760be5bc566d216f6932e21db5a10322b843c41689a`. [Kaggle](https://www.kaggle.com/datasets/kevinarvai/clinvar-conflicting) · [CSV của tác giả](https://github.com/arvkevi/clinvar-kaggle/blob/master/clinvar_conflicting.csv)
 
+## Cập nhật kiểm tra khi nạp và mã hóa multi-hot
+
+Bản chạy lại trước khi sửa khớp SHA-256 của toàn bộ 19 tệp trong `data/`. CSV gốc có 65.188 dòng với SHA-256 nêu trên. Dấu kiểm tra cho thứ tự tập dùng SHA-256 của `source_rows_train.npy` là `30ad1b6e40d7255cccec3ba028585c6aab13bb91e725b68594733077390afd296` và của `source_rows_test.npy` là `6ffdc6fa402523751a7adb7e9caf2f0c8f513044d5d8c142805f9ea520a65ec3`.
+
+| Cách mã hóa `Consequence` | Train | Test | Cột sau biến đổi | Thư mục |
+|---|---:|---:|---:|---|
+| One-hot mặc định | 52.150 | 13.038 | 64 | `data/` |
+| Multi-hot | 52.150 | 13.038 | 42 | `data_multihot/` |
+
+Mỗi chế độ có cùng số cột ở bản chuẩn hóa và bản giữ thang gốc. Multi-hot thay 46 cột one-hot cho các chuỗi hệ quả bằng 23 cột hệ quả học từ train và một cột thiếu cố định. Hai chế độ có X trước biến đổi, nhãn, ID biến thể và thứ tự dòng trùng từng byte.
+
+- `load_split` kiểm tra tiêu đề và số trường mỗi bản ghi, mã dòng nguyên dương duy nhất, cấu trúc khóa biến thể và thứ tự giữa X, y, IDs. Chỉ hai giá trị CSV `0` và `1` được chấp nhận cho `CLASS` trước khi ép kiểu. Ô trống được phép trong X trước biến đổi, còn chuỗi sai kiểu và vô hạn trong cột số bị từ chối.
+- `load_matrix` kiểm tra định dạng CSR, kích thước, tính hữu hạn, tên đặc trưng duy nhất và thứ tự mã dòng đối chiếu với CSV. Lỗi nêu tên tệp và tập. Hàm nạp kiểm tra cấu trúc và sự căn hàng theo mã dòng, còn phép đối chiếu giá trị ma trận với pipeline được thực hiện khi xuất và xác minh bộ dữ liệu.
+- Cả 17 kiểm thử trong `test_preprocess.py` đạt, gồm dữ liệu hỏng, giá trị thiếu, hệ quả lặp và mới, đọc joblib trong tiến trình mới, và kiểm tra danh mục được fit độc lập trong 3 fold cho cả hai chế độ.
+- Đã chạy lại cả hai chế độ từ CSV gốc. 19 tệp one-hot có SHA-256 trùng mốc ban đầu. Một tiến trình Python mới nạp bốn pipeline đã xuất và đối chiếu chính xác kích thước, thứ tự cột, mã dòng và giá trị với cả tám ma trận train/test.
+
+Khi có nhiều hệ quả đã thấy trong một ô, multi-hot có thể bật nhiều cột, làm thay đổi khoảng cách cho K-means. Các mức mới được bỏ qua tại lúc transform. Chưa chạy thí nghiệm so sánh chất lượng mô hình giữa hai chế độ.
+
 ## Khảo sát và kết quả chia tập
 
 | Tập | Số dòng | Số cột | CLASS=0 | CLASS=1 | % CLASS=1 |
@@ -10,8 +28,8 @@ CSV từ GitHub của Kevin Arvai trùng từng byte với CSV trong ZIP tải t
 | X đã làm sạch | 65.188 | 8 | 48.754 | 16.434 | 25,2102% |
 | Train, trước biến đổi | 52.150 | 8 | 39.003 | 13.147 | 25,2100% |
 | Test, trước biến đổi | 13.038 | 8 | 9.751 | 3.287 | 25,2109% |
-| Train, sau biến đổi | 52.150 | 64 | 39.003 | 13.147 | 25,2100% |
-| Test, sau biến đổi | 13.038 | 64 | 9.751 | 3.287 | 25,2109% |
+| Train, sau biến đổi one-hot | 52.150 | 64 | 39.003 | 13.147 | 25,2100% |
+| Test, sau biến đổi one-hot | 13.038 | 64 | 9.751 | 3.287 | 25,2109% |
 
 Sau chuẩn hóa khóa `CHROM/POS/REF/ALT`, có 65.188 khóa riêng biệt, 0 nhóm lặp và 0 nhóm mang đồng thời hai nhãn. Có 0 dòng trùng toàn bộ, 0 dòng lỗi khóa hoặc nhãn và 0 dòng bị loại. `data/raw_column_profile.csv` ghi kiểu suy luận từ dữ liệu, số ô thiếu và số giá trị phân biệt của từng cột. Trong tám đặc trưng, chỉ `CADD_PHRED` (1.092 ô) và `BIOTYPE` (16 ô) có giá trị thiếu.
 
@@ -24,7 +42,7 @@ Sau chuẩn hóa khóa `CHROM/POS/REF/ALT`, có 65.188 khóa riêng biệt, 0 nh
 | `AF_ESP`, `AF_EXAC`, `AF_TGP` | Giữ dạng số. Tần số alen trong các nguồn quần thể ESP, ExAC và 1000 Genomes cung cấp thông tin về độ hiếm. |
 | `CADD_PHRED` | Giữ dạng số. Điểm theo thang Phred biểu thị thứ hạng tác động do CADD dự đoán. |
 | `CLNVC` | Giữ và one-hot. Đây là loại biến thể như thay thế một nucleotide, mất đoạn hoặc chèn đoạn. |
-| `Consequence`, `IMPACT`, `BIOTYPE` | Giữ và one-hot. Chúng mô tả hệ quả dự đoán của VEP, mức độ tác động và loại transcript. Một tổ hợp hệ quả phân cách bằng `&` được mã hóa như một mức để giữ nguyên cách ghi của nguồn. |
+| `Consequence`, `IMPACT`, `BIOTYPE` | Giữ. Chúng mô tả hệ quả dự đoán của VEP, mức độ tác động và loại transcript. `Consequence` mặc định mã hóa one-hot theo tổ hợp, với tùy chọn multi-hot cho từng hệ quả. Hai cột còn lại luôn one-hot. |
 | `CLNSIGINCL`, `CLNDISDB`, `CLNDISDBINCL`, `CLNDN`, `CLNDNINCL`, `ORIGIN`, `SSR` | Loại. Chúng mô tả ý nghĩa lâm sàng của alen thành phần, tên/mã bệnh, nguồn gốc alen trong hồ sơ và cờ nghi ngờ từ nguồn. `CLNSIGINCL` chứa thông tin phân loại gần với mục tiêu. Các trường còn lại có thể phản ánh cách thu thập và tổng hợp hồ sơ ClinVar. |
 | `CLNHGVS`, `CLNVI`, `SYMBOL`, `Feature`, `Allele` | Loại. Biểu diễn HGVS, mã ngoài, ký hiệu gene, mã transcript/đặc trưng và chuỗi alen có thể giúp ghi nhớ địa điểm, gene, transcript hoặc danh tính bản ghi. |
 | `MC` | Loại. Hệ quả phân tử theo Sequence Ontology trùng chủ đề với `Consequence` và `IMPACT`. |
@@ -40,9 +58,9 @@ Danh sách cho phép trong mã chỉ đưa tám cột đã chọn vào X. Việc
 - Chuẩn hóa chữ hoa ở nhiễm sắc thể và alen, bỏ tiền tố `chr`, đổi `M` thành `MT`, bỏ số 0 đầu vị trí. Kiểm tra khóa trên các nhiễm sắc thể người chính và chuỗi alen kiểu CSV này. Dòng trùng toàn bộ giữ lần xuất hiện đầu tiên. Dòng bị loại có `source_row` và cờ lý do. Các dòng hợp lệ cùng khóa vẫn ở chung một tập, kể cả khi nhãn khác nhau. Quy tắc nhóm dựa trên bốn trường, chưa căn trái indel hoặc nhận dạng tương đương giữa các bản lắp ráp.
 - Chia 80/20 theo nhãn với `random_state=42` khi mỗi khóa chỉ có một dòng. Nếu có khóa lặp, dùng `StratifiedGroupKFold` 5 fold và lấy fold test có tổng sai lệch tỷ lệ dòng và tỷ lệ lớp 1 nhỏ nhất so với mục tiêu, trong số các fold có đủ hai lớp ở cả hai tập.
 - `Pipeline` và `ColumnTransformer` fit trên train. Các cột số điền bằng trung vị train. Với bộ này, trung vị của `CADD_PHRED` là 14,06. Nếu cả cột số thiếu trong một fold, bộ điền giữ cột và dùng 0. Biến phân loại dùng mức `__MISSING__` rồi one-hot. Mức mới được biểu diễn bằng 0 ở tất cả cột one-hot của biến tương ứng.
-- Logistic Regression và K-means dùng `StandardScaler` cho bốn cột số sau khi điền thiếu. Random Forest giữ thang số gốc. Cả hai phiên bản có cùng 64 tên cột. Với K-means, các khối one-hot và các cột số chuẩn hóa cùng tham gia khoảng cách Euclid. Các trường VEP liên quan có thể ảnh hưởng đồng thời lên khoảng cách.
+- Logistic Regression và K-means dùng `StandardScaler` cho bốn cột số sau khi điền thiếu. Random Forest giữ thang số gốc. Tên cột giữ nguyên giữa hai lựa chọn chuẩn hóa trong cùng chế độ mã hóa. Với K-means, các cột đánh dấu và các cột số chuẩn hóa cùng tham gia khoảng cách Euclid. Các trường VEP liên quan có thể ảnh hưởng đồng thời lên khoảng cách.
 
-## Xác minh
+## Xác minh ban đầu cho one-hot
 
 - Đã chạy từ CSV gốc hai lần độc lập trong cùng môi trường. Toàn bộ 19 tệp đầu ra có SHA-256 trùng giữa hai lần chạy.
 - Đã đọc lại X, y, IDs và ma trận. `source_row` khớp toàn bộ theo thứ tự và 0 khóa xuất hiện ở cả train lẫn test. Cả hai ma trận train/test ở mỗi phiên bản dùng cùng pipeline và danh sách tên cột. Ma trận chứa số hữu hạn, với `CLASS` và các mã truy vết nằm ngoài tập đặc trưng.
