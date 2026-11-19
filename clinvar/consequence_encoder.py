@@ -36,3 +36,32 @@ class ConsequenceMultiHot(TransformerMixin, BaseEstimator):
             [f"Consequence_term_{term}" for term in self.encoder_.classes_] + ["Consequence_missing"],
             dtype=object,
         )
+
+
+class RareConsequence(TransformerMixin, BaseEstimator):
+    """Gộp hệ quả hiếm hoặc chưa gặp thành một cột và tách riêng ô thiếu."""
+
+    def __init__(self, min_count=50):
+        self.min_count = min_count
+
+    def fit(self, X, y=None):
+        counts = X.iloc[:, 0].map(_terms).explode().value_counts()
+        self.terms_ = sorted(counts[counts.ge(self.min_count)].index)
+        return self
+
+    def transform(self, X):
+        check_is_fitted(self, "terms_")
+        lookup = {term: i for i, term in enumerate(self.terms_)}
+        rare = len(lookup)
+        columns, rows = [], []
+        for row, value in enumerate(X.iloc[:, 0]):
+            terms = _terms(value)
+            positions = {lookup.get(term, rare) for term in terms} if terms else {rare + 1}
+            rows.extend([row] * len(positions))
+            columns.extend(positions)
+        return sparse.csr_matrix((np.ones(len(rows)), (rows, columns)), shape=(len(X), rare + 2))
+
+    def get_feature_names_out(self, input_features=None):
+        check_is_fitted(self, "terms_")
+        return np.array([f"Consequence_term_{term}" for term in self.terms_]
+                        + ["Consequence_rare_or_unseen", "Consequence_missing"], dtype=object)

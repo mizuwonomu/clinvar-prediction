@@ -1,0 +1,93 @@
+﻿column,type,source,meaning
+source_row,int64,CSV nguồn,"Số dòng dữ liệu bắt đầu từ 1 sau tiêu đề. Khóa căn hàng, nằm ngoài X."
+CHROM,object,CHROM,Chuỗi chuẩn hóa trong khóa. Khóa bắt buộc.
+POS,object,POS,Số vị trí dạng chuỗi trong khóa. Khóa bắt buộc.
+REF,object,REF,"Chuỗi REF, ref_length. Khóa bắt buộc."
+ALT,object,ALT,"Chuỗi ALT, alt_length, alt_minus_ref, multiple_alt. Độ dài ALT và chênh lệch để trống nếu nhiều alen."
+AF_ESP_raw,object,AF_ESP,"Nội dung ô nguồn, gồm mã hoặc ký hiệu thiếu nếu có."
+AF_EXAC_raw,object,AF_EXAC,"Nội dung ô nguồn, gồm mã hoặc ký hiệu thiếu nếu có."
+AF_TGP_raw,object,AF_TGP,"Nội dung ô nguồn, gồm mã hoặc ký hiệu thiếu nếu có."
+EXON_raw,object,EXON,"Nội dung ô nguồn, gồm mã hoặc ký hiệu thiếu nếu có."
+INTRON_raw,object,INTRON,"Nội dung ô nguồn, gồm mã hoặc ký hiệu thiếu nếu có."
+CDS_position_raw,object,CDS_position,"Nội dung ô nguồn, gồm mã hoặc ký hiệu thiếu nếu có."
+Protein_position_raw,object,Protein_position,"Nội dung ô nguồn, gồm mã hoặc ký hiệu thiếu nếu có."
+cDNA_position_raw,object,cDNA_position,"Nội dung ô nguồn, gồm mã hoặc ký hiệu thiếu nếu có."
+SIFT_raw,object,SIFT,"Nội dung ô nguồn, gồm mã hoặc ký hiệu thiếu nếu có."
+PolyPhen_raw,object,PolyPhen,"Nội dung ô nguồn, gồm mã hoặc ký hiệu thiếu nếu có."
+BLOSUM62_raw,object,BLOSUM62,"Nội dung ô nguồn, gồm mã hoặc ký hiệu thiếu nếu có."
+Amino_acids_raw,object,Amino_acids,"Nội dung ô nguồn, gồm mã hoặc ký hiệu thiếu nếu có."
+CLNVC_raw,object,CLNVC,"Nội dung ô nguồn, gồm mã hoặc ký hiệu thiếu nếu có."
+IMPACT_raw,object,IMPACT,"Nội dung ô nguồn, gồm mã hoặc ký hiệu thiếu nếu có."
+Consequence_raw,object,Consequence,"Nội dung ô nguồn, gồm mã hoặc ký hiệu thiếu nếu có."
+ORIGIN_raw,object,ORIGIN,"Nội dung ô nguồn, gồm mã hoặc ký hiệu thiếu nếu có."
+CADD_RAW_raw,object,CADD_RAW,"Nội dung ô nguồn, gồm mã hoặc ký hiệu thiếu nếu có."
+CADD_PHRED_raw,object,CADD_PHRED,"Nội dung ô nguồn, gồm mã hoặc ký hiệu thiếu nếu có."
+LoFtool_raw,object,LoFtool,"Nội dung ô nguồn, gồm mã hoặc ký hiệu thiếu nếu có."
+SYMBOL_raw,object,SYMBOL,"Nội dung ô nguồn, gồm mã hoặc ký hiệu thiếu nếu có."
+BIOTYPE_raw,object,BIOTYPE,"Nội dung ô nguồn, gồm mã hoặc ký hiệu thiếu nếu có."
+CLNDN_raw,object,CLNDN,"Nội dung ô nguồn, gồm mã hoặc ký hiệu thiếu nếu có."
+AF_ESP,float64,AF_ESP,"Giá trị nguồn, AF hợp lệ, log và cờ bằng 0. Trống, ngoài miền và sai kiểu có trạng thái riêng."
+AF_EXAC,float64,AF_EXAC,"Giá trị nguồn, AF hợp lệ, log và cờ bằng 0. Trống, ngoài miền và sai kiểu có trạng thái riêng."
+AF_TGP,float64,AF_TGP,"Giá trị nguồn, AF hợp lệ, log và cờ bằng 0. Trống, ngoài miền và sai kiểu có trạng thái riêng."
+zero_AF_ESP,int8,AF_ESP,"1 nếu giá trị hợp lệ đúng bằng 0, 0 nếu không. Cờ không xác định thiếu của nguồn."
+log_AF_ESP,float64,AF_ESP,"log10(1 + 10^6 × AF). Giá trị 0 giữ bằng 0, AF lỗi/thiếu để trống."
+zero_AF_EXAC,int8,AF_EXAC,"1 nếu giá trị hợp lệ đúng bằng 0, 0 nếu không. Cờ không xác định thiếu của nguồn."
+log_AF_EXAC,float64,AF_EXAC,"log10(1 + 10^6 × AF). Giá trị 0 giữ bằng 0, AF lỗi/thiếu để trống."
+zero_AF_TGP,int8,AF_TGP,"1 nếu giá trị hợp lệ đúng bằng 0, 0 nếu không. Cờ không xác định thiếu của nguồn."
+log_AF_TGP,float64,AF_TGP,"log10(1 + 10^6 × AF). Giá trị 0 giữ bằng 0, AF lỗi/thiếu để trống."
+CLNVC,object,CLNVC,Nhãn nguồn và giá trị sạch. Thiếu để trống trước one-hot.
+Consequence,object,Consequence,Chuỗi nguồn và danh sách tách bằng &. Danh sách rỗng nếu không có chú giải.
+IMPACT,object,IMPACT,Nhãn nguồn và mã 0–3 từ MODIFIER đến HIGH. Thiếu hoặc mức chưa biết giữ trống.
+BIOTYPE,object,BIOTYPE,Nhãn nguồn và giá trị sạch. Thiếu giữ trống trước one-hot.
+CADD_RAW,float64,CADD_RAW,"Điểm nguồn, điểm số và cờ hiện diện. Thiếu giữ trống, bảo toàn điểm âm."
+CADD_PHRED,float64,CADD_PHRED,Điểm nguồn và điểm số. Thiếu giữ trống.
+LoFtool,float64,LoFtool,"Điểm nguồn, điểm số và cờ hiện diện. Thiếu giữ trống trước khi fit."
+has_LoFtool,int8,LoFtool,"1 có chú giải nguồn hợp lệ, 0 không có. Cờ BLOSUM62 không tính điểm khôi phục."
+has_CADD_RAW,int8,CADD_RAW,"1 có chú giải nguồn hợp lệ, 0 không có. Cờ BLOSUM62 không tính điểm khôi phục."
+has_SIFT,int8,SIFT,"1 có chú giải nguồn hợp lệ, 0 không có. Cờ BLOSUM62 không tính điểm khôi phục."
+has_PolyPhen,int8,PolyPhen,"1 có chú giải nguồn hợp lệ, 0 không có. Cờ BLOSUM62 không tính điểm khôi phục."
+has_BLOSUM62,int8,BLOSUM62,"1 có chú giải nguồn hợp lệ, 0 không có. Cờ BLOSUM62 không tính điểm khôi phục."
+ref_length,float64,REF,Số ký tự alen tham chiếu.
+alt_length,float64,ALT,Số ký tự ALT đơn. Để trống nếu có nhiều alen.
+alt_minus_ref,float64,"REF, ALT",Độ dài ALT đơn trừ REF. Để trống nếu có nhiều alen.
+multiple_alt,int8,ALT,"1 nếu ALT gồm nhiều alen, 0 nếu ALT đơn."
+transcript_region,object,"EXON, INTRON","exon, intron, exon_and_intron hoặc unresolved."
+EXON_index,float64,EXON,Thứ tự từ 1 đến tổng số. Ô trống nếu không có phân số hợp lệ.
+EXON_total,float64,EXON,Tổng số trên transcript. Ô trống nếu không có phân số hợp lệ.
+EXON_fraction,float64,EXON,Thứ tự chia tổng số. Ô trống nếu không có phân số hợp lệ.
+INTRON_index,float64,INTRON,Thứ tự từ 1 đến tổng số. Ô trống nếu không có phân số hợp lệ.
+INTRON_total,float64,INTRON,Tổng số trên transcript. Ô trống nếu không có phân số hợp lệ.
+INTRON_fraction,float64,INTRON,Thứ tự chia tổng số. Ô trống nếu không có phân số hợp lệ.
+AF_ESP_status,object,AF_ESP,"Trạng thái trước nội suy. Các nhóm xuất hiện được thống kê trong audit_train.csv. Trạng thái tọa độ phân biệt missing, unknown, single, range, partial và invalid."
+AF_EXAC_status,object,AF_EXAC,"Trạng thái trước nội suy. Các nhóm xuất hiện được thống kê trong audit_train.csv. Trạng thái tọa độ phân biệt missing, unknown, single, range, partial và invalid."
+AF_TGP_status,object,AF_TGP,"Trạng thái trước nội suy. Các nhóm xuất hiện được thống kê trong audit_train.csv. Trạng thái tọa độ phân biệt missing, unknown, single, range, partial và invalid."
+EXON_status,object,EXON,"Trạng thái trước nội suy. Các nhóm xuất hiện được thống kê trong audit_train.csv. Trạng thái tọa độ phân biệt missing, unknown, single, range, partial và invalid."
+INTRON_status,object,INTRON,"Trạng thái trước nội suy. Các nhóm xuất hiện được thống kê trong audit_train.csv. Trạng thái tọa độ phân biệt missing, unknown, single, range, partial và invalid."
+CDS_position_start,float64,CDS_position,Mút đầu hoặc tọa độ đơn. Ô trống khi mút đầu chưa biết.
+CDS_position_end,float64,CDS_position,Mút cuối hoặc tọa độ đơn. Ô trống khi mút cuối chưa biết.
+CDS_position_span,float64,CDS_position,Độ dài bao gồm hai mút. Ô trống khi thiếu mút hoặc cú pháp sai.
+CDS_position_status,object,CDS_position,"Trạng thái trước nội suy. Các nhóm xuất hiện được thống kê trong audit_train.csv. Trạng thái tọa độ phân biệt missing, unknown, single, range, partial và invalid."
+Protein_position_start,float64,Protein_position,Mút đầu hoặc tọa độ đơn. Ô trống khi mút đầu chưa biết.
+Protein_position_end,float64,Protein_position,Mút cuối hoặc tọa độ đơn. Ô trống khi mút cuối chưa biết.
+Protein_position_span,float64,Protein_position,Độ dài bao gồm hai mút. Ô trống khi thiếu mút hoặc cú pháp sai.
+Protein_position_status,object,Protein_position,"Trạng thái trước nội suy. Các nhóm xuất hiện được thống kê trong audit_train.csv. Trạng thái tọa độ phân biệt missing, unknown, single, range, partial và invalid."
+cDNA_position_start,float64,cDNA_position,Mút đầu hoặc tọa độ đơn. Ô trống khi mút đầu chưa biết.
+cDNA_position_end,float64,cDNA_position,Mút cuối hoặc tọa độ đơn. Ô trống khi mút cuối chưa biết.
+cDNA_position_span,float64,cDNA_position,Độ dài bao gồm hai mút. Ô trống khi thiếu mút hoặc cú pháp sai.
+cDNA_position_status,object,cDNA_position,"Trạng thái trước nội suy. Các nhóm xuất hiện được thống kê trong audit_train.csv. Trạng thái tọa độ phân biệt missing, unknown, single, range, partial và invalid."
+has_cDNA_without_CDS,int8,"cDNA_position, CDS_position","1 khi nguồn có cDNA và thiếu CDS, 0 cho các trường hợp còn lại."
+SIFT_call,object,SIFT,Kết luận sau khi tách hậu tố low_confidence. Thiếu giữ trống.
+SIFT_low_confidence,float64,SIFT,"1 có hậu tố low_confidence, 0 có kết luận không mang hậu tố. Thiếu giữ trống."
+PolyPhen,object,PolyPhen,"Nhãn nguồn, cờ hiện diện và mức unknown. unknown là mức quan sát, ô thiếu giữ trống."
+Amino_acids,object,Amino_acids,Cặp nguồn và cờ hiện diện. Thiếu giữ trống.
+has_Amino_acids,int8,Amino_acids,"1 có chú giải nguồn hợp lệ, 0 không có. Cờ BLOSUM62 không tính điểm khôi phục."
+BLOSUM62,float64,BLOSUM62,"Điểm nguồn, cờ hiện diện, điểm sau kiểm tra và nguồn điểm. Khôi phục 0 khi ô trống trên missense và cặp khớp điểm 0, giữ dấu âm."
+BLOSUM62_score,float64,"BLOSUM62, Amino_acids, Consequence","Điểm quan sát, hoặc 0 đã xác minh. Ô trống khi chưa có điểm."
+BLOSUM62_source,object,"BLOSUM62, Amino_acids, Consequence","observed, recovered hoặc missing."
+Consequence_terms,object,Consequence,"Các hệ quả duy nhất đã sắp xếp, phân tách bằng &. Ô trống khi không có từ."
+IMPACT_rank,int64,IMPACT,"MODIFIER=0, LOW=1, MODERATE=2, HIGH=3. Thiếu/mức lạ giữ trống."
+SYMBOL,object,SYMBOL,Tên gene nguồn và tên sạch để nhóm. Biến thể thiếu gene nhóm theo khóa riêng khi chia fold.
+ORIGIN_flags,object,ORIGIN,"Các bit nguồn, cách nhau bằng |. Dùng kiểm tra dữ liệu."
+ORIGIN_status,object,ORIGIN,"Trạng thái trước nội suy. Các nhóm xuất hiện được thống kê trong audit_train.csv. Trạng thái tọa độ phân biệt missing, unknown, single, range, partial và invalid."
+CLNDN_status,object,CLNDN,"Trạng thái trước nội suy. Các nhóm xuất hiện được thống kê trong audit_train.csv. Trạng thái tọa độ phân biệt missing, unknown, single, range, partial và invalid."
+CLNDN_unknown_only,int8,CLNDN,"1 khi mọi mục đều là not_specified/not_provided, 0 cho các trạng thái còn lại."
