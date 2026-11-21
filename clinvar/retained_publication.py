@@ -123,6 +123,151 @@ def verdict(group, winning, min_gain, max_loss):
     return ", ".join(failed) if failed else "Đã chọn" if winning else "Đạt, xếp sau"
 
 
+def endpoint_report(out, selected, add, tbl, page, source):
+    from study_retained import MAX_LOSS, MIN_GAIN
+
+    review = out / "endpoint_review"
+    if not (review / "selection.json").exists():
+        return
+    decision = load_json(review / "selection.json")
+    if any(decision[m]["baseline"] != selected[m]["configuration"] for m in LABEL):
+        return
+    result = pd.read_csv(review / "cv_summary.csv").set_index(["model", "config", "scheme", "subgroup"]).sort_index()
+    partial = pd.read_csv(review / "partial_oof.csv")
+    operating = pd.read_csv(review / "operating_metrics.csv").set_index("model")
+    page("Thử riêng từng mút tọa độ")
+    add("A là cấu hình cuối hiện tại của mỗi mô hình. B giữ start đã biết trong cột CDS_position_start hoặc "
+        "Protein_position_start hiện có. C giữ cách xử lý của B và thêm hai cột số CDS_position_partial_end, "
+        "Protein_position_partial_end cùng hai cột phân loại CDS_position_partial_endpoint, "
+        "Protein_position_partial_endpoint. Các mức phân loại là start_only, end_only hoặc other. "
+        "span của khoảng thiếu một mút tiếp tục để thiếu trước nội suy.")
+    add("CDS và protein cùng có khoảng partial trên 35 biến thể train, gồm 8 mẫu dương. B khôi phục start trên 25 dòng. "
+        "C có end quan sát trên 10 dòng và ghi trạng thái mút trên cả 35 dòng. So B với A để đo riêng việc giữ start. So C với B để đo bước bổ sung "
+        "end và trạng thái. Cả ba chạy trên cùng fold, cùng tham số và cùng quy trình fit.")
+    tbl(("Mô hình và nhánh", "AP biến thể", "Δ so với A", "Δ so với B", "AP theo gene"), [
+        (f"{LABEL[m]} · {arm}", decimal(result.loc[(m, arm, "variant", "all"), "ap"]),
+         decimal(result.loc[(m, arm, "variant", "all"), "delta_ap"], 5, True),
+         "—" if arm in ("A", "B") else decimal(result.loc[(m, arm, "variant", "all"), "ap"]
+                                                 - result.loc[(m, "B", "variant", "all"), "ap"], 5, True),
+         decimal(result.loc[(m, arm, "gene", "all"), "ap"]))
+        for m in LABEL for arm in ("A", "B", "C")
+    ])
+    add("AP lớp 1 bình quân 5 fold toàn tập train. So với A bằng tiêu chí ở phần trước. "
+        + ". ".join(f"{LABEL[m]} chọn {decision[m]['selected_arm']}" for m in LABEL) + ". "
+        + source(review / "cv_summary.csv", "AP và số fold tăng cho bốn tổ hợp") + " · "
+        + source(review / "cv_folds.csv", "AP từng fold"))
+    for m in LABEL:
+        reasons = [f"Nhánh {arm} — {verdict(result.loc[(m, arm)], decision[m]['selected_arm'] == arm, MIN_GAIN, MAX_LOSS)}"
+                   for arm in ("B", "C")]
+        add(f"**{LABEL[m]}.** {'. '.join(reasons)}.")
+    examples = []
+    for m in LABEL:
+        data = partial[partial.model.eq(m)]
+        require(len(data) == 35 and data.CLASS.sum() == 8 and data.source_row.is_unique, "Bảng OOF partial sai phạm vi.")
+        for old, new in (("A", "B"), ("B", "C")):
+            delta = (data[f"variant_{new}"] - data[f"variant_{old}"]).abs()
+            examples.append((f"{LABEL[m]} · {new} so với {old}", int(delta.gt(1e-12).sum()),
+                             decimal(delta.mean(), 5), decimal(delta.max(), 5)))
+    tbl(("So sánh trên 35 dòng", "Số xác suất đổi", "TB độ đổi tuyệt đối",
+         "Độ đổi lớn nhất"), examples)
+    add("Độ thay đổi tuyệt đối của xác suất ngoài fold theo biến thể. Mỗi so sánh có 35 dòng. "
+        "Ngưỡng đếm thay đổi là 10⁻¹². Phân tích nhóm nhỏ mang tính thăm dò vì chỉ có 8 mẫu dương. "
+        + source(review / "partial_oof.csv", "Xác suất theo từng dòng ở cả hai cách chia"))
+    page("AP và ngưỡng quyết định lớp")
+    add("AP lớp 1 dùng để chọn feature. Sau khi cố định cấu hình, chọn một ngưỡng cho mỗi mô hình bằng cách tối đa hóa "
+        "F1 lớp 1 trên xác suất ngoài fold của toàn bộ train. Khi nhiều ngưỡng có cùng F1, lấy ngưỡng cao nhất. "
+        "F1 trên tập xác suất dùng để chọn ngưỡng được ghi riêng.")
+    tbl(("Mô hình", "AP CV", "Ngưỡng OOF", "F1 chọn ngưỡng", "Precision ngoài", "Recall ngoài", "F1 ngoài"), [
+        (LABEL[m], *[decimal(operating.loc[m, col]) for col in
+                     ("ap_mean", "final_threshold", "tuning_f1", "precision", "recall", "f1")])
+        for m in LABEL
+    ])
+    add("AP là trung bình 5 fold theo biến thể. Precision, recall và F1 ngoài được tính bằng cách gộp dự đoán nhị phân "
+        "của 52.150 dòng validation, gồm 13.147 mẫu dương. Với mỗi fold ngoài, chọn ngưỡng trên xác suất ngoài fold "
+        "của bốn fold bên trong phần fit, rồi áp lên fold ngoài. Vì vậy ba cột hiệu năng ngoài dùng ngưỡng riêng "
+        "từng fold, còn cột ngưỡng OOF là giá trị chốt từ toàn bộ train. "
+        + source(review / "operating_metrics.csv", "Tổng hợp AP và F1") + " · "
+        + source(review / "threshold_folds.csv", "Ngưỡng và hiệu năng từng fold"))
+    add("Đây là đánh giá nội bộ với cấu hình đã cố định. Ngưỡng và kết quả test của bộ 24 cột lịch sử thuộc cấu hình "
+        "lịch sử. Kết quả cho hai cấu hình hiện tại dùng train. "
+        + source(ROOT / "study_endpoints.py", "Mã tái lập"))
+
+
+def oof_report(out, add, tbl, page, source):
+    review = out / "endpoint_review"
+    if not (review / "cv_by_split_comparison.csv").exists():
+        return
+    errors = pd.read_csv(review / "error_by_subgroup.csv")
+    comparison = pd.read_csv(review / "cv_by_split_comparison.csv").set_index(["model", "scheme"])
+    sites = pd.read_csv(review / "site_cv_summary.csv").set_index("model")
+    groupings = {
+        "transcript_region": "Vùng transcript",
+        "missense_protein": "Chú giải trong missense",
+        "allele_frequency": "Tần số alen",
+        "variant_type": "Loại CLNVC",
+    }
+    group_names = {
+        "exon": "Chỉ exon", "intron": "Chỉ intron", "exon_and_intron": "Cả exon và intron",
+        "unresolved": "Chưa xác định", "present": "Có chú giải protein",
+        "missing": "Thiếu", "all_zero": "Cả ba AF bằng 0", "any_positive": "Có AF dương",
+        "unclassified": "AF chưa phân loại",
+    }
+
+    def label(row):
+        name = ("Thiếu cả ba chú giải protein" if row.grouping == "missense_protein" and row.group == "missing"
+                else group_names.get(row.group, row.group))
+        rate = decimal(100 * row.miss_rate, 1) + "%" if pd.notna(row.miss_rate) else "chưa xác định"
+        limited = " †" if row.positive < 30 else ""
+        return f"{name} — {integer(row.FN)}/{integer(row.positive)} ({rate}){limited}"
+
+    page("Phân tích các biến thể bị bỏ sót")
+    records = []
+    for key, grouping in groupings.items():
+        for model, name in LABEL.items():
+            group = errors.query("model == @model and grouping == @key")
+            largest_rate = group.sort_values(["miss_rate", "FN", "group"],
+                                            ascending=[False, False, True]).iloc[0]
+            largest_count = group.sort_values(["FN", "positive", "group"],
+                                             ascending=[False, False, True]).iloc[0]
+            records.append((grouping, name, label(largest_rate), label(largest_count)))
+    tbl(("Phép phân nhóm", "Mô hình", "Tỷ lệ bỏ sót cao nhất", "Nhiều ca bỏ sót nhất"), records)
+    add("Mỗi ô ghi FN/số mẫu CLASS=1 trong nhóm và tỷ lệ bỏ sót FN/(TP+FN). "
+        "Dự đoán ngoài fold theo biến thể gồm 52.150 dòng mỗi mô hình, trong đó có 13.147 mẫu dương. "
+        "Phép so sánh chú giải protein chỉ dùng 25.892 dòng train mang token missense_variant, "
+        "và dùng cờ có điểm SIFT, PolyPhen hoặc BLOSUM62 trong CSV gốc. Các phép phân nhóm có thể chồng lấn, "
+        "nên đọc riêng từng phép so sánh. Dấu † ghi nhóm có dưới 30 mẫu dương. "
+        "Trong CSV, NA biểu thị chỉ số có mẫu số bằng 0. "
+        + source(review / "error_by_subgroup.csv", "Ma trận nhầm lẫn theo nhóm") + " · "
+        + source(review / "oof_predictions.csv", "Dự đoán ngoài fold từng biến thể"))
+
+    page("Đánh giá trên vị trí nhiễm sắc thể mới")
+    tbl(("Mô hình", "Cách chia", "AP", "Precision", "Recall", "F1"), [
+        (label_name, split_name, *[
+            f"{decimal(comparison.loc[(model, scheme), metric])} ({decimal(comparison.loc[(model, scheme), metric+'_std'])})"
+            for metric in ("ap", "precision", "recall", "f1")
+        ])
+        for model, label_name in LABEL.items()
+        for scheme, split_name in [("variant", "Biến thể"), ("site", "Vị trí CHROM + POS")]
+    ])
+    add(f"Cả hai cách chia dùng 52.150 dòng train gồm 13.147 mẫu dương. Phép chia theo vị trí có "
+        f"{integer(sites.sites.iloc[0])} khóa CHROM + POS. Mọi alen cùng vị trí vào chung một fold. "
+        "Mỗi fold có cả hai lớp và không có vị trí giao giữa fit và validation. Ngưỡng F1 học ở vòng trong "
+        "trên các nhóm vị trí thuộc phần fit. Vị trí mới nghĩa là chưa gặp tổ hợp CHROM + POS trong phần fit, "
+        "và cùng gene vẫn có thể xuất hiện ở hai phía. "
+        + source(review / "site_fold_assignments.csv", "Phân bổ vị trí") + " · "
+        + source(review / "site_cv_folds.csv", "Kết quả từng fold và kiểm tra trùng vị trí"))
+    add("AP là trung bình không trọng số của 5 fold. Precision, recall và F1 tính từ các dự đoán nhị phân gộp. "
+        "Số trong ngoặc là độ lệch chuẩn mẫu của chỉ số qua 5 fold, dùng để mô tả độ dao động. "
+        "Hai cách chia có thành phần fold khác nhau nên so chênh lệch tổng thể. "
+        + source(review / "cv_by_split_comparison.csv", "So sánh đầy đủ hai cách chia") + " · "
+        + source(review / "site_cv_summary.csv", "Tổng hợp theo vị trí") + " · "
+        + source(review / "site_oof_predictions.csv", "Dự đoán ngoài fold theo vị trí"))
+    for model, name in LABEL.items():
+        delta = comparison.loc[(model, "site")] - comparison.loc[(model, "variant")]
+        add(f"**{name}.** Chia theo vị trí so với chia theo biến thể cho ΔAP "
+            f"{decimal(delta.ap, 5, True)} và ΔF1 {decimal(delta.f1, 5, True)}.")
+
+
 def write_report(out, summary, selected):
     from study_retained import LOCKED, MAX_LOSS, MIN_GAIN, qualified
 
@@ -183,6 +328,20 @@ def write_report(out, summary, selected):
     add("# Tiền xử lý và đánh giá đặc trưng ClinVar")
     add("Mục tiêu là dự đoán CLASS=1, tức diễn giải mâu thuẫn giữa các đánh giá ClinVar. "
         "Average precision (AP) đo khả năng xếp các biến thể lớp 1 lên đầu theo xác suất dự đoán.")
+    add("### Cách gán nhãn CLASS và trường hợp VUS")
+    add("Năm mức ý nghĩa lâm sàng khi diễn giải biến thể theo ACMG/AMP là gây bệnh (pathogenic), có khả năng gây bệnh "
+        "(likely pathogenic), chưa rõ ý nghĩa (VUS), có khả năng lành tính (likely benign) và lành tính (benign). "
+        "Các mức này mô tả kết luận về biến thể. CLASS ghi nhận tình trạng mâu thuẫn theo quy tắc của bộ dữ liệu. "
+        "[Hướng dẫn ACMG/AMP](https://pmc.ncbi.nlm.nih.gov/articles/PMC4544753/)")
+    add("Tác giả khởi tạo CLASS=0 và gán CLASS=1 khi CLNSIGCONF khác null. Bộ dữ liệu chỉ giữ hai giá trị CLNREVSTAT "
+        "lịch sử gồm criteria_provided,_multiple_submitters,_no_conflicts và "
+        "criteria_provided,_conflicting_interpretations. Tác giả bỏ CLNSIG, CLNSIGCONF và CLNREVSTAT trước khi xuất CSV. "
+        "[Mã tạo bộ dữ liệu, dòng 89–109](https://github.com/arvkevi/clinvar-kaggle/blob/master/process_clinvar.py#L89-L109)")
+    add("**VUS đi đâu?** Riêng mức VUS chưa đủ để suy ra CLASS. Trong phạm vi đã lọc, bản ghi có CLNSIGCONF khác null "
+        "nhận lớp 1, còn trường null nhận lớp 0. Quy tắc cũng áp dụng cho pathogenic và benign. CLASS=0 nghĩa là "
+        "không ghi nhận mâu thuẫn theo tiêu chí của bộ dữ liệu. Muốn đếm VUS theo lớp cần đối chiếu đúng bản VCF nguồn "
+        "vì các trường cần thiết đã được bỏ khỏi CSV. "
+        "[Mã tạo nhãn](https://github.com/arvkevi/clinvar-kaggle/blob/master/process_clinvar.py#L89-L109)")
     tbl(("Phạm vi", "Biến thể", "CLASS=1"), [
         ("Toàn bộ", integer(len(classes) + len(test_classes)), integer(classes.sum() + test_classes.sum())),
         ("Train", integer(len(classes)), integer(classes.sum())),
@@ -282,7 +441,8 @@ def write_report(out, summary, selected):
         + source(ROOT / "study_retained.py", "Hàm chuẩn bị X") + " · "
         + source(ROOT / "preprocess.py", "Bộ điền thiếu"))
     add("cDNA được giữ trong bảng sạch và thử trong nhánh tọa độ với start, end, span, status và cờ có cDNA khi thiếu CDS. "
-        "Cả hai bộ cuối dùng start và span của CDS/protein.")
+        "Cả hai bộ cuối dùng start và span của CDS/protein. 1476 là tọa độ trên CDS. Muốn tính tỷ lệ chiều dài "
+        "cần chiều dài CDS của đúng transcript làm mẫu số.")
     add("### Đếm dòng có cDNA và thiếu CDS trên train")
     tbl(("Nhóm hệ quả", "Tổng dòng trong nhóm", "Có cDNA và thiếu CDS"),
         [(label, integer(n), integer(k)) for label, n, k in rows])
@@ -322,6 +482,31 @@ def write_report(out, summary, selected):
     ])
     add("AP mốc → cuối, trung bình không trọng số của 5 fold trong từng nhóm. Mỗi dòng thuộc đúng một fold trong mỗi cách chia. "
         + source(out / "fold_assignments.csv", "Phân bổ fold") + " · " + source(out / "cv_summary.csv", "AP theo nhóm"))
+    page("CHROM và tần suất gene SYMBOL")
+    add("Quy tắc để chọn feature yêu cầu đủ 5 fold trong cả bốn tổ hợp biến thể/gene × toàn tập/missense, "
+        "ΔAP toàn tập theo biến thể ≥ +0,002, ít nhất 4/5 fold tăng và mọi ΔAP trung bình ≥ −0,002. "
+        "Dung sai giảm áp dụng riêng cho từng tổ hợp. "
+        + source(ROOT / "study_retained.py", "Quy tắc chọn"))
+    symbol = pd.read_csv(OUTPUT / "gene_fold_metrics.csv").query("config == 'symbol_frequency' and subgroup == 'all'")
+    symbol = symbol.groupby(["model", "scheme"]).delta_ap.mean()
+    chrom = model_group(LR, "chrom").delta_ap
+    tbl(("Thử nghiệm", "Bộ mốc", "ΔAP biến thể", "ΔAP theo gene"), [
+        ("CHROM · Logistic Regression", "locked_24", decimal(chrom["variant", "all"], 4, True),
+         decimal(chrom["gene", "all"], 4, True)),
+        *[(f"Tần suất SYMBOL · {LABEL[m]}", "Baseline one-hot", decimal(symbol[m, "variant"], 4, True),
+           decimal(symbol[m, "gene"], 4, True)) for m in LABEL],
+    ])
+    add("Mỗi ô là trung bình ΔAP trên toàn tập ở 5 fold train, theo đúng bộ mốc của hàng đó. "
+        + source(out / "cv_summary.csv", "Kết quả CHROM") + " · "
+        + source(OUTPUT / "gene_fold_metrics.csv", "Kết quả SYMBOL lịch sử"))
+    add("CHROM vượt giới hạn giảm trên gene chưa gặp. Với Logistic Regression lịch sử, mức giảm toàn tập theo gene của "
+        "tần suất SYMBOL nằm trong dung sai. Cần thử lại trên đúng bộ mốc hiện tại và kiểm tra cả missense trước khi "
+        "quyết định thêm feature. Với Random Forest lịch sử, mức giảm toàn tập theo gene vượt dung sai. "
+        "Tần suất của gene chưa xuất hiện trong phần fit được mã hóa thành 0. "
+        "Trong cấu hình hiện tại, SYMBOL phục vụ chia fold theo gene. "
+        + source(ROOT / "feature_study.py", "Mã hóa tần suất"))
+    endpoint_report(out, selected, add, tbl, page, source)
+    oof_report(out, add, tbl, page, source)
     for model in LABEL:
         page(f"Phụ lục thử nghiệm {LABEL[model]}")
         trial_rows = []
@@ -378,8 +563,9 @@ def write_report(out, summary, selected):
         "có cả placeholder và tên bệnh, hoặc có tên bệnh. SYMBOL dùng để chia fold theo gene. "
         + source(out / "origin_train.csv", "Đối chiếu mã ORIGIN") + " · "
         + source(out / "QUYET_DINH_46_COT.md", "Phụ lục quyết định đủ 46 cột"))
-    add("Tái lập dữ liệu và CV bằng `python study_retained.py`. Tái sinh báo cáo từ các kết quả đã lưu bằng "
-        "`python retained_publication.py`. Kiểm thử bằng `python -m unittest -q`. "
+    add("Tái lập dữ liệu và CV bằng `python study_retained.py`. Chạy phép thử mút tọa độ và ngưỡng với "
+        "`python study_endpoints.py`. Tái sinh báo cáo bằng `python retained_publication.py`. "
+        "Kiểm thử bằng `python -m unittest -q`. "
         + source(ROOT / "README.md", "Hướng dẫn workspace"))
     page("Phụ lục đối chiếu 46 trường gốc")
     from feature_documentation import REQUIRED, TRIAL

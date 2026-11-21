@@ -1,5 +1,21 @@
 # Tiền xử lý ClinVar Conflicting
 
+Báo cáo cuối trình bày các đặc trưng được chọn cho Logistic Regression và Random Forest. [PDF](clinvar_feature_report.pdf) · [Word](clinvar_feature_report.docx) · [Markdown và bảng số liệu](feature_retained/BAO_CAO.md)
+
+| Công việc | Tệp |
+|---|---|
+| Đối chiếu kế hoạch chọn đặc trưng và bộ cơ sở | [Kế hoạch](feature_selection_plan.md) · [Báo cáo tiền xử lý ban đầu](baseline_preprocessing_report.md) |
+| Kiểm tra độ phủ chú giải và tạo heatmap | [audit_feature_coverage.py](audit_feature_coverage.py), chạy qua lệnh `python feature_study.py audit` |
+| Thử nghiệm cách biểu diễn AF và cờ có CADD | [evaluate_af_and_cadd.py](evaluate_af_and_cadd.py), thêm `--gene` để kiểm tra cấu hình log AF và cờ 0 trên gene chưa gặp |
+| Xuất từ điển cột, bảng quyết định và số liệu kiểm tra | [feature_documentation.py](feature_documentation.py), được gọi từ [study_retained.py](study_retained.py) |
+| Tái tạo báo cáo Markdown từ kết quả đã lưu | [retained_publication.py](retained_publication.py) |
+| Thử riêng mút tọa độ và đánh giá ngưỡng F1 trên train | [study_endpoints.py](study_endpoints.py) |
+| Xuất dự đoán ngoài fold, phân tích lỗi và kiểm tra vị trí mới | [study_oof.py](study_oof.py) |
+
+Tên tệp Python và tài liệu mới dùng chữ thường với dấu gạch dưới (`snake_case`). Tên lớp mô hình, cột dữ liệu và tệp chuẩn như `README.md` theo quy ước của công cụ tương ứng.
+
+## Cài đặt và chạy
+
 Dùng Python 3.13.3 để tái lập môi trường đã kiểm chứng. Chạy các lệnh từ thư mục `clinvar`.
 
 ```powershell
@@ -17,7 +33,7 @@ Mặc định, one-hot dùng cả chuỗi `Consequence` làm một mức, kể c
 | Tệp trong mỗi thư mục kết quả | Nội dung |
 |---|---|
 | `X_{train,test}.csv` | Tám đặc trưng đã làm sạch, trước điền thiếu, mã hóa và chuẩn hóa |
-| `y_{train,test}.csv` | `CLASS` theo `source_row`. Giá trị 0 là nhất quán, 1 là mâu thuẫn |
+| `y_{train,test}.csv` | `CLASS` theo `source_row`. Lớp 1 có `CLNSIGCONF` khác null, lớp 0 không ghi nhận mâu thuẫn theo tiêu chí của bộ dữ liệu |
 | `ids_{train,test}.csv` | Khóa biến thể và bốn trường cấu thành khóa |
 | `scaled_{train,test}.npz` | Ma trận thưa CSR có chuẩn hóa cột số cho Logistic Regression và K-means |
 | `unscaled_{train,test}.npz` | Ma trận thưa CSR giữ thang đo cột số cho Random Forest |
@@ -97,4 +113,49 @@ for scaled, model in models:
 
 Nếu đánh giá K-means theo fold, dùng `GroupKFold` với `variant_id` và `Pipeline([("prep", make_preprocessor(consequence_encoding=mode)), ("model", KMeans(...))])`. Gọi `fit` chỉ với X của phần huấn luyện mỗi fold. Dành tập test cho lần đánh giá sau khi chọn cấu hình.
 
-Xem [báo cáo quyết định và xác minh](REPORT.md) để biết kết quả khảo sát và kiểm tra.
+Xem [báo cáo quyết định và xác minh](baseline_preprocessing_report.md) để biết kết quả khảo sát và kiểm tra.
+
+## Đặc trưng bổ sung cho CLASS=1
+
+[Báo cáo thí nghiệm](feature_study/KET_QUA.md) có bảng quyết định 46 cột, hai heatmap trên train, so sánh 5 fold và kết quả test. Hai baseline nằm trong `data/` và `data_multihot/`. Bộ mở rộng đã khóa nằm trong `feature_study/pipeline/`, gồm CSV đầu vào, nhãn, mã dòng, ma trận CSR và các tệp joblib.
+
+Để tái lập trên train, dùng một thư mục kết quả mới.
+
+```powershell
+python feature_study.py audit --out feature_study_repro
+python feature_study.py cv --out feature_study_repro
+```
+
+Hai lệnh trên tạo heatmap trước khi so sánh và ghi cấu hình cùng ngưỡng đã khóa vào `locked.json`. Kết quả test đã có trong thư mục báo cáo. Lệnh `python feature_study.py holdout --out <thư_mục>` dành cho thư mục có cấu hình đã khóa và chưa có kết quả test.
+
+Ví dụ nạp mô hình đã xuất và dự đoán trên các cột đã chuẩn bị. Áp ngưỡng `thresholds_oof_f1.selected.RandomForest` trong `locked.json` nếu cần chuyển xác suất thành nhãn nhị phân.
+
+```python
+import joblib
+import pandas as pd
+
+X = pd.read_csv("feature_study/pipeline/X_train.csv", index_col="source_row",
+                float_precision="round_trip")
+model = joblib.load("feature_study/pipeline/model_RandomForest.joblib")
+probability = model.predict_proba(X)[:, 1]
+```
+
+## Bảng sạch trước nội suy và bộ đầu vào theo mô hình
+
+Chạy `python study_retained.py` trong thư mục `clinvar` để xuất vào `feature_retained/`. Có thể truyền `--out` để chọn thư mục khác. Lệnh dùng lại source_row, nhãn và fold đã chốt, chọn đặc trưng bằng CV trên train và dùng test để xuất ma trận đầu vào. [Báo cáo và tệp bàn giao](feature_retained/BAO_CAO.md)
+
+Sau khi có bộ đầu vào đã khóa, chạy `python study_endpoints.py` để so sánh cách xử lý từng mút tọa độ và đánh giá ngưỡng F1 bằng CV lồng trên train. Chạy `python retained_publication.py` để đưa các kết quả đó vào báo cáo. [Kết quả theo fold](feature_retained/endpoint_review/cv_folds.csv) · [AP, ngưỡng và F1](feature_retained/endpoint_review/operating_metrics.csv)
+
+Chạy `python study_oof.py` từ thư mục `clinvar` sau khi đã có các bảng mốc ngưỡng. Lệnh đọc hai cấu hình khóa, xuất dự đoán từng dòng theo biến thể và theo vị trí CHROM + POS, rồi đọc lại các CSV để đối chiếu AP và F1. Dùng `python retained_publication.py` để cập nhật báo cáo và `python -B -m unittest -q` để kiểm tra. [Dự đoán từng biến thể](feature_retained/endpoint_review/oof_predictions.csv) · [Lỗi theo nhóm](feature_retained/endpoint_review/error_by_subgroup.csv) · [So sánh hai cách chia](feature_retained/endpoint_review/cv_by_split_comparison.csv)
+
+Bảng sạch lưu cả mút tọa độ đã biết của khoảng thiếu một đầu. Với mô hình giữ cách biểu diễn cũ, hàm nạp áp lại quy tắc tọa độ của bộ mốc. Đọc cùng danh sách cột và preprocessor đã xuất.
+
+```python
+import joblib
+from study_retained import read_model_inputs
+
+model = "LogisticRegression"
+X = read_model_inputs("feature_retained", model, "train")
+preprocessor = joblib.load(f"feature_retained/{model}/preprocessor.joblib")
+matrix = preprocessor.transform(X)
+```

@@ -52,7 +52,8 @@ RULES = {
     "LoFtool": ("Điểm nguồn, điểm số và cờ hiện diện", "Thiếu giữ trống trước khi fit",
                 "Giữ điểm và cờ theo bộ 24, giá trị đã cải thiện AP RF trong lần trước."),
     "SYMBOL": ("Tên gene nguồn và tên sạch để nhóm", "Biến thể thiếu gene nhóm theo khóa riêng khi chia fold",
-               "Tần suất gene thử trước giảm lợi ích trên gene mới."),
+               "Tần suất gene đã thử với baseline one-hot lịch sử. Mức giảm toàn tập trên gene mới của LR trong dung sai, "
+               "của RF vượt dung sai. Cần thử trên bộ mốc hiện tại trước khi dùng làm feature."),
     "BIOTYPE": ("Nhãn nguồn và giá trị sạch", "Thiếu giữ trống trước one-hot",
                 "Vy và Sơn đề nghị bỏ. Giữ biến của bộ 24 để so sánh đồng nhất."),
     "CLNDN": ("Chuỗi nguồn, cờ chỉ placeholder và trạng thái", "Tách mục theo |, giữ riêng named, mixed, placeholder_only, missing",

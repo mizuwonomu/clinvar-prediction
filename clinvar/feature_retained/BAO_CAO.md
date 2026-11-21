@@ -2,6 +2,14 @@
 
 Mục tiêu là dự đoán CLASS=1, tức diễn giải mâu thuẫn giữa các đánh giá ClinVar. Average precision (AP) đo khả năng xếp các biến thể lớp 1 lên đầu theo xác suất dự đoán.
 
+### Cách gán nhãn CLASS và trường hợp VUS
+
+Năm mức ý nghĩa lâm sàng khi diễn giải biến thể theo ACMG/AMP là gây bệnh (pathogenic), có khả năng gây bệnh (likely pathogenic), chưa rõ ý nghĩa (VUS), có khả năng lành tính (likely benign) và lành tính (benign). Các mức này mô tả kết luận về biến thể. CLASS ghi nhận tình trạng mâu thuẫn theo quy tắc của bộ dữ liệu. [Hướng dẫn ACMG/AMP](https://pmc.ncbi.nlm.nih.gov/articles/PMC4544753/)
+
+Tác giả khởi tạo CLASS=0 và gán CLASS=1 khi CLNSIGCONF khác null. Bộ dữ liệu chỉ giữ hai giá trị CLNREVSTAT lịch sử gồm criteria_provided,_multiple_submitters,_no_conflicts và criteria_provided,_conflicting_interpretations. Tác giả bỏ CLNSIG, CLNSIGCONF và CLNREVSTAT trước khi xuất CSV. [Mã tạo bộ dữ liệu, dòng 89–109](https://github.com/arvkevi/clinvar-kaggle/blob/master/process_clinvar.py#L89-L109)
+
+**VUS đi đâu?** Riêng mức VUS chưa đủ để suy ra CLASS. Trong phạm vi đã lọc, bản ghi có CLNSIGCONF khác null nhận lớp 1, còn trường null nhận lớp 0. Quy tắc cũng áp dụng cho pathogenic và benign. CLASS=0 nghĩa là không ghi nhận mâu thuẫn theo tiêu chí của bộ dữ liệu. Muốn đếm VUS theo lớp cần đối chiếu đúng bản VCF nguồn vì các trường cần thiết đã được bỏ khỏi CSV. [Mã tạo nhãn](https://github.com/arvkevi/clinvar-kaggle/blob/master/process_clinvar.py#L89-L109)
+
 | Phạm vi | Biến thể | CLASS=1 |
 | --- | --- | --- |
 | Toàn bộ | 65.188 | 16.434 |
@@ -87,7 +95,7 @@ Ví dụ tính bằng cùng quy tắc cho CDS, protein và cDNA. Tọa độ đ�
 
 **1476-? qua ba bước.** Bảng sạch lưu start=1476, end=NaN, span=NaN và status=partial. Khi chuẩn bị CDS/protein, cả hai bộ cuối đặt start của dòng partial về NaN. span vẫn là NaN, còn end nằm ngoài schema cuối. Khi biến đổi, start và span thiếu nhận trung vị của cột tương ứng từ phần fit. [Hàm chuẩn bị X](../study_retained.py) · [Bộ điền thiếu](../preprocess.py)
 
-cDNA được giữ trong bảng sạch và thử trong nhánh tọa độ với start, end, span, status và cờ có cDNA khi thiếu CDS. Cả hai bộ cuối dùng start và span của CDS/protein.
+cDNA được giữ trong bảng sạch và thử trong nhánh tọa độ với start, end, span, status và cờ có cDNA khi thiếu CDS. Cả hai bộ cuối dùng start và span của CDS/protein. 1476 là tọa độ trên CDS. Muốn tính tỷ lệ chiều dài cần chiều dài CDS của đúng transcript làm mẫu số.
 
 ### Đếm dòng có cDNA và thiếu CDS trên train
 
@@ -122,6 +130,105 @@ Nhánh tọa độ tăng ở 4/5 fold cho Logistic Regression, nhưng mức tăn
 | Missense theo gene | 0,2680 → 0,3948 | 0,4467 → 0,4503 |
 
 AP mốc → cuối, trung bình không trọng số của 5 fold trong từng nhóm. Mỗi dòng thuộc đúng một fold trong mỗi cách chia. [Phân bổ fold](fold_assignments.csv) · [AP theo nhóm](cv_summary.csv)
+
+<!-- pagebreak -->
+
+## CHROM và tần suất gene SYMBOL
+
+Quy tắc để chọn feature yêu cầu đủ 5 fold trong cả bốn tổ hợp biến thể/gene × toàn tập/missense, ΔAP toàn tập theo biến thể ≥ +0,002, ít nhất 4/5 fold tăng và mọi ΔAP trung bình ≥ −0,002. Dung sai giảm áp dụng riêng cho từng tổ hợp. [Quy tắc chọn](../study_retained.py)
+
+| Thử nghiệm | Bộ mốc | ΔAP biến thể | ΔAP theo gene |
+| --- | --- | --- | --- |
+| CHROM · Logistic Regression | locked_24 | +0,0102 | −0,0107 |
+| Tần suất SYMBOL · Logistic Regression | Baseline one-hot | +0,0101 | −0,0002 |
+| Tần suất SYMBOL · Random Forest | Baseline one-hot | +0,0353 | −0,0094 |
+
+Mỗi ô là trung bình ΔAP trên toàn tập ở 5 fold train, theo đúng bộ mốc của hàng đó. [Kết quả CHROM](cv_summary.csv) · [Kết quả SYMBOL lịch sử](../feature_study/gene_fold_metrics.csv)
+
+CHROM vượt giới hạn giảm trên gene chưa gặp. Với Logistic Regression lịch sử, mức giảm toàn tập theo gene của tần suất SYMBOL nằm trong dung sai. Cần thử lại trên đúng bộ mốc hiện tại và kiểm tra cả missense trước khi quyết định thêm feature. Với Random Forest lịch sử, mức giảm toàn tập theo gene vượt dung sai. Tần suất của gene chưa xuất hiện trong phần fit được mã hóa thành 0. Trong cấu hình hiện tại, SYMBOL phục vụ chia fold theo gene. [Mã hóa tần suất](../feature_study.py)
+
+<!-- pagebreak -->
+
+## Thử riêng từng mút tọa độ
+
+A là cấu hình cuối hiện tại của mỗi mô hình. B giữ start đã biết trong cột CDS_position_start hoặc Protein_position_start hiện có. C giữ cách xử lý của B và thêm hai cột số CDS_position_partial_end, Protein_position_partial_end cùng hai cột phân loại CDS_position_partial_endpoint, Protein_position_partial_endpoint. Các mức phân loại là start_only, end_only hoặc other. span của khoảng thiếu một mút tiếp tục để thiếu trước nội suy.
+
+CDS và protein cùng có khoảng partial trên 35 biến thể train, gồm 8 mẫu dương. B khôi phục start trên 25 dòng. C có end quan sát trên 10 dòng và ghi trạng thái mút trên cả 35 dòng. So B với A để đo riêng việc giữ start. So C với B để đo bước bổ sung end và trạng thái. Cả ba chạy trên cùng fold, cùng tham số và cùng quy trình fit.
+
+| Mô hình và nhánh | AP biến thể | Δ so với A | Δ so với B | AP theo gene |
+| --- | --- | --- | --- | --- |
+| Logistic Regression · A | 0,4208 | +0,00000 | — | 0,4147 |
+| Logistic Regression · B | 0,4206 | −0,00022 | — | 0,4145 |
+| Logistic Regression · C | 0,4206 | −0,00028 | −0,00005 | 0,4146 |
+| Random Forest · A | 0,4957 | +0,00000 | — | 0,4626 |
+| Random Forest · B | 0,4965 | +0,00080 | — | 0,4601 |
+| Random Forest · C | 0,4889 | −0,00685 | −0,00764 | 0,4582 |
+
+AP lớp 1 bình quân 5 fold toàn tập train. So với A bằng tiêu chí ở phần trước. Logistic Regression chọn A. Random Forest chọn A. [AP và số fold tăng cho bốn tổ hợp](endpoint_review/cv_summary.csv) · [AP từng fold](endpoint_review/cv_folds.csv)
+
+**Logistic Regression.** Nhánh B — Δ dưới ngưỡng, dưới 4 fold tăng. Nhánh C — Δ dưới ngưỡng, dưới 4 fold tăng.
+
+**Random Forest.** Nhánh B — Δ dưới ngưỡng, giảm quá giới hạn. Nhánh C — Δ dưới ngưỡng, dưới 4 fold tăng, giảm quá giới hạn.
+
+| So sánh trên 35 dòng | Số xác suất đổi | TB độ đổi tuyệt đối | Độ đổi lớn nhất |
+| --- | --- | --- | --- |
+| Logistic Regression · B so với A | 35 | 0,02062 | 0,10887 |
+| Logistic Regression · C so với B | 35 | 0,08730 | 0,35910 |
+| Random Forest · B so với A | 35 | 0,01711 | 0,06843 |
+| Random Forest · C so với B | 35 | 0,02444 | 0,10935 |
+
+Độ thay đổi tuyệt đối của xác suất ngoài fold theo biến thể. Mỗi so sánh có 35 dòng. Ngưỡng đếm thay đổi là 10⁻¹². Phân tích nhóm nhỏ mang tính thăm dò vì chỉ có 8 mẫu dương. [Xác suất theo từng dòng ở cả hai cách chia](endpoint_review/partial_oof.csv)
+
+<!-- pagebreak -->
+
+## AP và ngưỡng quyết định lớp
+
+AP lớp 1 dùng để chọn feature. Sau khi cố định cấu hình, chọn một ngưỡng cho mỗi mô hình bằng cách tối đa hóa F1 lớp 1 trên xác suất ngoài fold của toàn bộ train. Khi nhiều ngưỡng có cùng F1, lấy ngưỡng cao nhất. F1 trên tập xác suất dùng để chọn ngưỡng được ghi riêng.
+
+| Mô hình | AP CV | Ngưỡng OOF | F1 chọn ngưỡng | Precision ngoài | Recall ngoài | F1 ngoài |
+| --- | --- | --- | --- | --- | --- | --- |
+| Logistic Regression | 0,4208 | 0,2396 | 0,5056 | 0,3981 | 0,6914 | 0,5053 |
+| Random Forest | 0,4957 | 0,2647 | 0,5405 | 0,4281 | 0,7248 | 0,5383 |
+
+AP là trung bình 5 fold theo biến thể. Precision, recall và F1 ngoài được tính bằng cách gộp dự đoán nhị phân của 52.150 dòng validation, gồm 13.147 mẫu dương. Với mỗi fold ngoài, chọn ngưỡng trên xác suất ngoài fold của bốn fold bên trong phần fit, rồi áp lên fold ngoài. Vì vậy ba cột hiệu năng ngoài dùng ngưỡng riêng từng fold, còn cột ngưỡng OOF là giá trị chốt từ toàn bộ train. [Tổng hợp AP và F1](endpoint_review/operating_metrics.csv) · [Ngưỡng và hiệu năng từng fold](endpoint_review/threshold_folds.csv)
+
+Đây là đánh giá nội bộ với cấu hình đã cố định. Ngưỡng và kết quả test của bộ 24 cột lịch sử thuộc cấu hình lịch sử. Kết quả cho hai cấu hình hiện tại dùng train. [Mã tái lập](../study_endpoints.py)
+
+<!-- pagebreak -->
+
+## Phân tích các biến thể bị bỏ sót
+
+| Phép phân nhóm | Mô hình | Tỷ lệ bỏ sót cao nhất | Nhiều ca bỏ sót nhất |
+| --- | --- | --- | --- |
+| Vùng transcript | Logistic Regression | Cả exon và intron — 6/7 (85,7%) † | Chỉ exon — 3.712/11.230 (33,1%) |
+| Vùng transcript | Random Forest | Cả exon và intron — 7/7 (100,0%) † | Chỉ exon — 3.368/11.230 (30,0%) |
+| Chú giải trong missense | Logistic Regression | Có chú giải protein — 2.275/6.507 (35,0%) | Có chú giải protein — 2.275/6.507 (35,0%) |
+| Chú giải trong missense | Random Forest | Có chú giải protein — 2.184/6.507 (33,6%) | Có chú giải protein — 2.184/6.507 (33,6%) |
+| Tần số alen | Logistic Regression | Cả ba AF bằng 0 — 2.437/2.978 (81,8%) | Cả ba AF bằng 0 — 2.437/2.978 (81,8%) |
+| Tần số alen | Random Forest | Cả ba AF bằng 0 — 2.107/2.978 (70,8%) | Cả ba AF bằng 0 — 2.107/2.978 (70,8%) |
+| Loại CLNVC | Logistic Regression | Inversion — 3/3 (100,0%) † | single_nucleotide_variant — 3.843/12.563 (30,6%) |
+| Loại CLNVC | Random Forest | Inversion — 3/3 (100,0%) † | single_nucleotide_variant — 3.380/12.563 (26,9%) |
+
+Mỗi ô ghi FN/số mẫu CLASS=1 trong nhóm và tỷ lệ bỏ sót FN/(TP+FN). Dự đoán ngoài fold theo biến thể gồm 52.150 dòng mỗi mô hình, trong đó có 13.147 mẫu dương. Phép so sánh chú giải protein chỉ dùng 25.892 dòng train mang token missense_variant, và dùng cờ có điểm SIFT, PolyPhen hoặc BLOSUM62 trong CSV gốc. Các phép phân nhóm có thể chồng lấn, nên đọc riêng từng phép so sánh. Dấu † ghi nhóm có dưới 30 mẫu dương. Trong CSV, NA biểu thị chỉ số có mẫu số bằng 0. [Ma trận nhầm lẫn theo nhóm](endpoint_review/error_by_subgroup.csv) · [Dự đoán ngoài fold từng biến thể](endpoint_review/oof_predictions.csv)
+
+<!-- pagebreak -->
+
+## Đánh giá trên vị trí nhiễm sắc thể mới
+
+| Mô hình | Cách chia | AP | Precision | Recall | F1 |
+| --- | --- | --- | --- | --- | --- |
+| Logistic Regression | Biến thể | 0,4208 (0,0062) | 0,3981 (0,0067) | 0,6914 (0,0167) | 0,5053 (0,0075) |
+| Logistic Regression | Vị trí CHROM + POS | 0,4209 (0,0073) | 0,3957 (0,0088) | 0,6982 (0,0124) | 0,5051 (0,0090) |
+| Random Forest | Biến thể | 0,4957 (0,0086) | 0,4281 (0,0097) | 0,7248 (0,0272) | 0,5383 (0,0064) |
+| Random Forest | Vị trí CHROM + POS | 0,4926 (0,0111) | 0,4298 (0,0096) | 0,7268 (0,0263) | 0,5401 (0,0055) |
+
+Cả hai cách chia dùng 52.150 dòng train gồm 13.147 mẫu dương. Phép chia theo vị trí có 50.829 khóa CHROM + POS. Mọi alen cùng vị trí vào chung một fold. Mỗi fold có cả hai lớp và không có vị trí giao giữa fit và validation. Ngưỡng F1 học ở vòng trong trên các nhóm vị trí thuộc phần fit. Vị trí mới nghĩa là chưa gặp tổ hợp CHROM + POS trong phần fit, và cùng gene vẫn có thể xuất hiện ở hai phía. [Phân bổ vị trí](endpoint_review/site_fold_assignments.csv) · [Kết quả từng fold và kiểm tra trùng vị trí](endpoint_review/site_cv_folds.csv)
+
+AP là trung bình không trọng số của 5 fold. Precision, recall và F1 tính từ các dự đoán nhị phân gộp. Số trong ngoặc là độ lệch chuẩn mẫu của chỉ số qua 5 fold, dùng để mô tả độ dao động. Hai cách chia có thành phần fold khác nhau nên so chênh lệch tổng thể. [So sánh đầy đủ hai cách chia](endpoint_review/cv_by_split_comparison.csv) · [Tổng hợp theo vị trí](endpoint_review/site_cv_summary.csv) · [Dự đoán ngoài fold theo vị trí](endpoint_review/site_oof_predictions.csv)
+
+**Logistic Regression.** Chia theo vị trí so với chia theo biến thể cho ΔAP +0,00009 và ΔF1 −0,00016.
+
+**Random Forest.** Chia theo vị trí so với chia theo biến thể cho ΔAP −0,00311 và ΔF1 +0,00187.
 
 <!-- pagebreak -->
 
@@ -190,7 +297,7 @@ Cả 22 kiểm thử đều đạt trong lần bàn giao. Bốn ma trận khớp
 
 ORIGIN được lưu để kiểm tra, với các bit quan sát khớp header GRCh37 tham chiếu. Phiên bản VCF gốc và thời điểm ORIGIN có sẵn khi dự đoán cần xác minh. CLNDN được giữ trong bảng sạch với trạng thái chỉ placeholder, có cả placeholder và tên bệnh, hoặc có tên bệnh. SYMBOL dùng để chia fold theo gene. [Đối chiếu mã ORIGIN](origin_train.csv) · [Phụ lục quyết định đủ 46 cột](QUYET_DINH_46_COT.md)
 
-Tái lập dữ liệu và CV bằng `python study_retained.py`. Tái sinh báo cáo từ các kết quả đã lưu bằng `python retained_publication.py`. Kiểm thử bằng `python -m unittest -q`. [Hướng dẫn workspace](../README.md)
+Tái lập dữ liệu và CV bằng `python study_retained.py`. Chạy phép thử mút tọa độ và ngưỡng với `python study_endpoints.py`. Tái sinh báo cáo bằng `python retained_publication.py`. Kiểm thử bằng `python -m unittest -q`. [Hướng dẫn workspace](../README.md)
 
 <!-- pagebreak -->
 
