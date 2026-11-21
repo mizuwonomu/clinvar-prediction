@@ -174,6 +174,7 @@ def endpoint_report(out, selected, add, tbl, page, source):
         "Ngưỡng đếm thay đổi là 10⁻¹². Phân tích nhóm nhỏ mang tính thăm dò vì chỉ có 8 mẫu dương. "
         + source(review / "partial_oof.csv", "Xác suất theo từng dòng ở cả hai cách chia"))
     page("AP và ngưỡng quyết định lớp")
+    add("Random Forest đạt AP 0,4957 và F1 ngoài fold 0,5383. Với Logistic Regression, hai chỉ số tương ứng là 0,4208 và 0,5053.")
     add("AP lớp 1 dùng để chọn feature. Sau khi cố định cấu hình, chọn một ngưỡng cho mỗi mô hình bằng cách tối đa hóa "
         "F1 lớp 1 trên xác suất ngoài fold của toàn bộ train. Khi nhiều ngưỡng có cùng F1, lấy ngưỡng cao nhất. "
         "F1 trên tập xác suất dùng để chọn ngưỡng được ghi riêng.")
@@ -221,6 +222,7 @@ def oof_report(out, add, tbl, page, source):
         return f"{name} — {integer(row.FN)}/{integer(row.positive)} ({rate}){limited}"
 
     page("Phân tích các biến thể bị bỏ sót")
+    add("Trong 2.978 biến thể lớp 1 có cả ba tần suất alen bằng 0, Random Forest bỏ sót 2.107 trường hợp (70,8%) và Logistic Regression bỏ sót 2.437 trường hợp (81,8%).")
     records = []
     for key, grouping in groupings.items():
         for model, name in LABEL.items():
@@ -241,6 +243,7 @@ def oof_report(out, add, tbl, page, source):
         + source(review / "oof_predictions.csv", "Dự đoán ngoài fold từng biến thể"))
 
     page("Đánh giá trên vị trí nhiễm sắc thể mới")
+    add("Khi đánh giá tại vị trí chưa gặp, Random Forest đạt AP 0,4926 và F1 0,5401. Hai chỉ số của Logistic Regression đều thay đổi dưới 0,001.")
     tbl(("Mô hình", "Cách chia", "AP", "Precision", "Recall", "F1"), [
         (label_name, split_name, *[
             f"{decimal(comparison.loc[(model, scheme), metric])} ({decimal(comparison.loc[(model, scheme), metric+'_std'])})"
@@ -328,6 +331,21 @@ def write_report(out, summary, selected):
     add("# Tiền xử lý và đánh giá đặc trưng ClinVar")
     add("Mục tiêu là dự đoán CLASS=1, tức diễn giải mâu thuẫn giữa các đánh giá ClinVar. "
         "Average precision (AP) đo khả năng xếp các biến thể lớp 1 lên đầu theo xác suất dự đoán.")
+    add("### Hai cấu hình đã chọn")
+    tbl(("Mô hình", "Thay đổi so với mốc 24 đầu vào", "Đầu vào → sau mã hóa", "AP mốc → cuối"), [
+        (LABEL[LR], "Log AF, ba cờ AF bằng 0, multi-hot hệ quả có nhóm hiếm", "27 → 56",
+         benchmark(LR, selected[LR]["configuration"])),
+        (LABEL[RF], "Giữ AF gốc, multi-hot hệ quả có nhóm hiếm", "24 → 53",
+         benchmark(RF, selected[RF]["configuration"])),
+    ])
+    add("AP cho CLASS=1 là trung bình không trọng số trên cùng 5 fold theo biến thể từ 52.150 dòng train. "
+        "Bộ mốc locked_24 có 24 đầu vào và 83 cột sau mã hóa. "
+        + source(out / "cv_summary.csv", "Tổng hợp CV") + " · " + source(out / "selected.json", "Cấu hình đã xuất"))
+    add("Trong Logistic Regression, lợi ích chính đến từ log AF kết hợp ba cờ bằng 0. "
+        "Khi thêm multi-hot có nhóm hiếm sau bước AF, AP đổi "
+        + decimal(ap(LR, selected[LR]["configuration"]) - ap(LR, "af_log+af_zero"), 5, True)
+        + " và số cột sau mã hóa giảm từ 86 xuống 56. Random Forest giữ AF gốc theo kết quả CV. "
+        + source(out / "cv_summary.csv", "Kết quả từng cấu hình"))
     add("### Cách gán nhãn CLASS và trường hợp VUS")
     add("Năm mức ý nghĩa lâm sàng khi diễn giải biến thể theo ACMG/AMP là gây bệnh (pathogenic), có khả năng gây bệnh "
         "(likely pathogenic), chưa rõ ý nghĩa (VUS), có khả năng lành tính (likely benign) và lành tính (benign). "
@@ -349,21 +367,6 @@ def write_report(out, summary, selected):
     ])
     add("Số dòng đếm theo source_row duy nhất. Cột CLASS=1 đếm nhãn bằng 1 trong từng tập. "
         + source(out / "y_train.csv", "Nhãn train") + " · " + source(out / "y_test.csv", "Nhãn test"))
-    add("### Hai cấu hình đã chọn")
-    tbl(("Mô hình", "Thay đổi so với mốc 24 đầu vào", "Đầu vào → sau mã hóa", "AP mốc → cuối"), [
-        (LABEL[LR], "Log AF, ba cờ AF bằng 0, multi-hot hệ quả có nhóm hiếm", "27 → 56",
-         benchmark(LR, selected[LR]["configuration"])),
-        (LABEL[RF], "Giữ AF gốc, multi-hot hệ quả có nhóm hiếm", "24 → 53",
-         benchmark(RF, selected[RF]["configuration"])),
-    ])
-    add("AP cho CLASS=1 là trung bình không trọng số trên cùng 5 fold theo biến thể từ 52.150 dòng train. "
-        "Bộ mốc locked_24 có 24 đầu vào và 83 cột sau mã hóa. "
-        + source(out / "cv_summary.csv", "Tổng hợp CV") + " · " + source(out / "selected.json", "Cấu hình đã xuất"))
-    add("Trong Logistic Regression, lợi ích chính đến từ log AF kết hợp ba cờ bằng 0. "
-        "Khi thêm multi-hot có nhóm hiếm sau bước AF, AP đổi "
-        + decimal(ap(LR, selected[LR]["configuration"]) - ap(LR, "af_log+af_zero"), 5, True)
-        + " và số cột sau mã hóa giảm từ 86 xuống 56. Random Forest giữ AF gốc theo kết quả CV. "
-        + source(out / "cv_summary.csv", "Kết quả từng cấu hình"))
     page("Danh sách đầu vào cuối")
     tbl(("Nhóm", "Tên cột đầu vào", "Mô hình"), [
         *[(label, ", ".join(cols), "Cả hai") for label, cols in GROUPS],
@@ -379,7 +382,7 @@ def write_report(out, summary, selected):
     add("Giữ tỷ lệ và nhóm vùng của EXON/INTRON vì hai trường bổ sung nhau. Giữ điểm và cờ LoFtool. "
         "Các giá trị SIFT, PolyPhen, BLOSUM62 và tọa độ cDNA được bảo toàn trong bảng sạch. "
         "Đầu vào cuối của ba chú giải protein dùng cờ có giá trị trong CSV gốc.")
-    page("Tương quan cờ thiếu và tương quan điểm")
+    page("Độ phủ chú giải và các trường thường thiếu cùng nhau")
     add("![Tương quan cờ thiếu trên train](hinh_1_co_thieu.png)",
         "**Hình 1. Các cột nào thường thiếu cùng nhau?** Tương quan Pearson giữa cờ thiếu 0/1 trên 52.150 dòng train. "
         "EXON/INTRON = " + decimal(missing.loc["EXON", "INTRON"], 3)
@@ -390,16 +393,8 @@ def write_report(out, summary, selected):
         "Hai trường bổ sung nhau nên giữ cả hai. Hình của Sơn dùng 16 cột trên toàn bộ 65.188 dòng. "
         + source(out / "missing_indicator_corr_train.csv", "Ma trận cờ thiếu train")
         + " · [Hình 12 của Sơn, mục 5.2](https://drive.google.com/drive/folders/1T5GGkzTAMNXZzxXAzhSQZfCwRPwkpaAt)")
-    add("![Spearman và số cặp trên train](hinh_2_spearman.png)",
-        "**Hình 2. Hai thang điểm nào có thứ hạng gần trùng?** Mỗi ô ghi Spearman của giá trị điểm và số cặp cùng quan sát. "
-        "CADD_PHRED/CADD_RAW có ρ ≈ " + decimal(rho.loc["CADD_PHRED", "CADD_RAW"], 6)
-        + " trên " + integer(counts.loc["CADD_PHRED", "CADD_RAW"])
-        + " cặp từ train. Các ô hiển thị hệ số làm tròn. Ô thiếu ở một trong hai trường nằm ngoài phép tính. "
-        + source(OUTPUT / "spearman.csv", "Giá trị Spearman") + " · "
-        + source(OUTPUT / "spearman_pair_counts.csv", "Số cặp"))
-    page("Chú giải protein và cách dùng CADD")
     add("![Độ phủ chú giải protein trên train](hinh_3_do_phu.png)",
-        "**Hình 3. Chú giải protein có mặt ở nhóm nào?** Tử số là số dòng có chú giải gốc, mẫu số là số dòng của nhóm train. "
+        "**Hình 2. Chú giải protein có mặt ở nhóm nào?** Tử số là số dòng có chú giải gốc, mẫu số là số dòng của nhóm train. "
         "Missense được xác định khi Consequence có từ missense_variant. Điểm BLOSUM62 khôi phục nằm ngoài tử số. "
         + source(out / "audit_train.csv", "Số đếm độ phủ") + " · "
         + source(OUTPUT / "coverage.png", "Độ phủ theo hệ quả"))
@@ -408,6 +403,14 @@ def write_report(out, summary, selected):
         f"Còn {integer(aud['BLOSUM62','missing_missense']-aud['BLOSUM62','recovered_missense'])} ô thiếu. "
         "Bảng sạch giữ điểm âm, chú giải ngoài missense, PolyPhen unknown và mức tin cậy SIFT. "
         + source(out / "audit_train.csv", "Kiểm tra protein"))
+    page("Hai thang điểm CADD")
+    add("![Spearman và số cặp trên train](hinh_2_spearman.png)",
+        "**Hình 3. Hai thang điểm nào có thứ hạng gần trùng?** Mỗi ô ghi Spearman của giá trị điểm và số cặp cùng quan sát. "
+        "CADD_PHRED/CADD_RAW có ρ ≈ " + decimal(rho.loc["CADD_PHRED", "CADD_RAW"], 6)
+        + " trên " + integer(counts.loc["CADD_PHRED", "CADD_RAW"])
+        + " cặp từ train. Các ô hiển thị hệ số làm tròn. Ô thiếu ở một trong hai trường nằm ngoài phép tính. "
+        + source(OUTPUT / "spearman.csv", "Giá trị Spearman") + " · "
+        + source(OUTPUT / "spearman_pair_counts.csv", "Số cặp"))
     add("### CADD theo từng giai đoạn")
     median = data["preprocessors"]["scaled"]["train_imputation_values"]["CADD_PHRED"]
     phred = pd.read_csv(out / "clean_train.csv", usecols=["CADD_PHRED"]).CADD_PHRED
@@ -420,7 +423,7 @@ def write_report(out, summary, selected):
         ("Cross-validation", "Học trung vị cột số từ phần huấn luyện của từng fold. Preprocessor xuất học trên toàn bộ train."),
     ])
     add("Trung vị lịch sử 14,06 dùng 51.293 giá trị PHRED hợp lệ của train. Hình 1 đo sự đồng thời thiếu của hai thang. "
-        "Hình 2 đo tương quan thứ hạng của các giá trị cùng có điểm. "
+        "Hình 3 đo tương quan thứ hạng của các giá trị cùng có điểm. "
         + source(ROOT / "data" / "report.json", "Thống kê bộ cơ sở") + " · "
         + source(OUTPUT / "pipeline" / "input_columns.json", "Schema mốc") + " · "
         + source(ROOT / "preprocess.py", "Quy tắc điền thiếu"))
@@ -554,7 +557,7 @@ def write_report(out, summary, selected):
         f"{integer(r[1])} chỉ intron, {integer(r[2])} có cả hai và {integer(r[3])} chưa xác định. "
         "Nhóm chưa xác định gồm dòng thiếu cả hai trường hợp lệ. "
         + source(out / "audit_train.csv", "Số đếm vùng và lỗi cú pháp"))
-    add("Cả 22 kiểm thử đều đạt trong lần bàn giao. Bốn ma trận khớp từng phần tử khi đọc lại CSV và nạp lại preprocessor. "
+    add("Cả 27 kiểm thử đều đạt trong lần bàn giao. Bốn ma trận khớp từng phần tử khi đọc lại CSV và nạp lại preprocessor. "
         "Mã dòng và nhãn căn đúng thứ tự, khóa biến thể giữa train và test tách biệt, tên cột duy nhất và dữ liệu ma trận hữu hạn. "
         + source(ROOT / "study_retained.py", "Kiểm tra đầu ra") + " · "
         + source(out / "column_dictionary.csv", "Từ điển cột"))

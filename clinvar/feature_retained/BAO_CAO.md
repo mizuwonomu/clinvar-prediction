@@ -2,6 +2,17 @@
 
 Mục tiêu là dự đoán CLASS=1, tức diễn giải mâu thuẫn giữa các đánh giá ClinVar. Average precision (AP) đo khả năng xếp các biến thể lớp 1 lên đầu theo xác suất dự đoán.
 
+### Hai cấu hình đã chọn
+
+| Mô hình | Thay đổi so với mốc 24 đầu vào | Đầu vào → sau mã hóa | AP mốc → cuối |
+| --- | --- | --- | --- |
+| Logistic Regression | Log AF, ba cờ AF bằng 0, multi-hot hệ quả có nhóm hiếm | 27 → 56 | 0,3421 → 0,4208 |
+| Random Forest | Giữ AF gốc, multi-hot hệ quả có nhóm hiếm | 24 → 53 | 0,4847 → 0,4957 |
+
+AP cho CLASS=1 là trung bình không trọng số trên cùng 5 fold theo biến thể từ 52.150 dòng train. Bộ mốc locked_24 có 24 đầu vào và 83 cột sau mã hóa. [Tổng hợp CV](cv_summary.csv) · [Cấu hình đã xuất](selected.json)
+
+Trong Logistic Regression, lợi ích chính đến từ log AF kết hợp ba cờ bằng 0. Khi thêm multi-hot có nhóm hiếm sau bước AF, AP đổi +0,00013 và số cột sau mã hóa giảm từ 86 xuống 56. Random Forest giữ AF gốc theo kết quả CV. [Kết quả từng cấu hình](cv_summary.csv)
+
 ### Cách gán nhãn CLASS và trường hợp VUS
 
 Năm mức ý nghĩa lâm sàng khi diễn giải biến thể theo ACMG/AMP là gây bệnh (pathogenic), có khả năng gây bệnh (likely pathogenic), chưa rõ ý nghĩa (VUS), có khả năng lành tính (likely benign) và lành tính (benign). Các mức này mô tả kết luận về biến thể. CLASS ghi nhận tình trạng mâu thuẫn theo quy tắc của bộ dữ liệu. [Hướng dẫn ACMG/AMP](https://pmc.ncbi.nlm.nih.gov/articles/PMC4544753/)
@@ -17,17 +28,6 @@ Tác giả khởi tạo CLASS=0 và gán CLASS=1 khi CLNSIGCONF khác null. Bộ
 | Test lịch sử | 13.038 | 3.287 |
 
 Số dòng đếm theo source_row duy nhất. Cột CLASS=1 đếm nhãn bằng 1 trong từng tập. [Nhãn train](y_train.csv) · [Nhãn test](y_test.csv)
-
-### Hai cấu hình đã chọn
-
-| Mô hình | Thay đổi so với mốc 24 đầu vào | Đầu vào → sau mã hóa | AP mốc → cuối |
-| --- | --- | --- | --- |
-| Logistic Regression | Log AF, ba cờ AF bằng 0, multi-hot hệ quả có nhóm hiếm | 27 → 56 | 0,3421 → 0,4208 |
-| Random Forest | Giữ AF gốc, multi-hot hệ quả có nhóm hiếm | 24 → 53 | 0,4847 → 0,4957 |
-
-AP cho CLASS=1 là trung bình không trọng số trên cùng 5 fold theo biến thể từ 52.150 dòng train. Bộ mốc locked_24 có 24 đầu vào và 83 cột sau mã hóa. [Tổng hợp CV](cv_summary.csv) · [Cấu hình đã xuất](selected.json)
-
-Trong Logistic Regression, lợi ích chính đến từ log AF kết hợp ba cờ bằng 0. Khi thêm multi-hot có nhóm hiếm sau bước AF, AP đổi +0,00013 và số cột sau mã hóa giảm từ 86 xuống 56. Random Forest giữ AF gốc theo kết quả CV. [Kết quả từng cấu hình](cv_summary.csv)
 
 <!-- pagebreak -->
 
@@ -49,22 +49,22 @@ Giữ tỷ lệ và nhóm vùng của EXON/INTRON vì hai trường bổ sung nh
 
 <!-- pagebreak -->
 
-## Tương quan cờ thiếu và tương quan điểm
+## Độ phủ chú giải và các trường thường thiếu cùng nhau
 
 ![Tương quan cờ thiếu trên train](hinh_1_co_thieu.png)
 **Hình 1. Các cột nào thường thiếu cùng nhau?** Tương quan Pearson giữa cờ thiếu 0/1 trên 52.150 dòng train. EXON/INTRON = −0,990, SIFT/PolyPhen = 0,991 và hai cờ thiếu CADD = 1,000. Bốn nhóm vùng có 44.988 chỉ exon, 7.035 chỉ intron, 31 có cả hai và 96 chưa xác định. Hai trường bổ sung nhau nên giữ cả hai. Hình của Sơn dùng 16 cột trên toàn bộ 65.188 dòng. [Ma trận cờ thiếu train](missing_indicator_corr_train.csv) · [Hình 12 của Sơn, mục 5.2](https://drive.google.com/drive/folders/1T5GGkzTAMNXZzxXAzhSQZfCwRPwkpaAt)
 
-![Spearman và số cặp trên train](hinh_2_spearman.png)
-**Hình 2. Hai thang điểm nào có thứ hạng gần trùng?** Mỗi ô ghi Spearman của giá trị điểm và số cặp cùng quan sát. CADD_PHRED/CADD_RAW có ρ ≈ 0,999985 trên 51.293 cặp từ train. Các ô hiển thị hệ số làm tròn. Ô thiếu ở một trong hai trường nằm ngoài phép tính. [Giá trị Spearman](../feature_study/spearman.csv) · [Số cặp](../feature_study/spearman_pair_counts.csv)
+![Độ phủ chú giải protein trên train](hinh_3_do_phu.png)
+**Hình 2. Chú giải protein có mặt ở nhóm nào?** Tử số là số dòng có chú giải gốc, mẫu số là số dòng của nhóm train. Missense được xác định khi Consequence có từ missense_variant. Điểm BLOSUM62 khôi phục nằm ngoài tử số. [Số đếm độ phủ](audit_train.csv) · [Độ phủ theo hệ quả](../feature_study/coverage.png)
+
+Trên train, khôi phục 5.442 điểm BLOSUM62 bằng 0 trong 5.469 ô thiếu missense khi cặp axit amin hợp lệ có điểm ma trận bằng 0. Còn 27 ô thiếu. Bảng sạch giữ điểm âm, chú giải ngoài missense, PolyPhen unknown và mức tin cậy SIFT. [Kiểm tra protein](audit_train.csv)
 
 <!-- pagebreak -->
 
-## Chú giải protein và cách dùng CADD
+## Hai thang điểm CADD
 
-![Độ phủ chú giải protein trên train](hinh_3_do_phu.png)
-**Hình 3. Chú giải protein có mặt ở nhóm nào?** Tử số là số dòng có chú giải gốc, mẫu số là số dòng của nhóm train. Missense được xác định khi Consequence có từ missense_variant. Điểm BLOSUM62 khôi phục nằm ngoài tử số. [Số đếm độ phủ](audit_train.csv) · [Độ phủ theo hệ quả](../feature_study/coverage.png)
-
-Trên train, khôi phục 5.442 điểm BLOSUM62 bằng 0 trong 5.469 ô thiếu missense khi cặp axit amin hợp lệ có điểm ma trận bằng 0. Còn 27 ô thiếu. Bảng sạch giữ điểm âm, chú giải ngoài missense, PolyPhen unknown và mức tin cậy SIFT. [Kiểm tra protein](audit_train.csv)
+![Spearman và số cặp trên train](hinh_2_spearman.png)
+**Hình 3. Hai thang điểm nào có thứ hạng gần trùng?** Mỗi ô ghi Spearman của giá trị điểm và số cặp cùng quan sát. CADD_PHRED/CADD_RAW có ρ ≈ 0,999985 trên 51.293 cặp từ train. Các ô hiển thị hệ số làm tròn. Ô thiếu ở một trong hai trường nằm ngoài phép tính. [Giá trị Spearman](../feature_study/spearman.csv) · [Số cặp](../feature_study/spearman_pair_counts.csv)
 
 ### CADD theo từng giai đoạn
 
@@ -75,7 +75,7 @@ Trên train, khôi phục 5.442 điểm BLOSUM62 bằng 0 trong 5.469 ô thiếu
 | Bộ mốc mở rộng và hai cấu hình cuối | CADD_RAW. Bảo toàn cả điểm RAW âm hữu hạn. |
 | Cross-validation | Học trung vị cột số từ phần huấn luyện của từng fold. Preprocessor xuất học trên toàn bộ train. |
 
-Trung vị lịch sử 14,06 dùng 51.293 giá trị PHRED hợp lệ của train. Hình 1 đo sự đồng thời thiếu của hai thang. Hình 2 đo tương quan thứ hạng của các giá trị cùng có điểm. [Thống kê bộ cơ sở](../data/report.json) · [Schema mốc](../feature_study/pipeline/input_columns.json) · [Quy tắc điền thiếu](../preprocess.py)
+Trung vị lịch sử 14,06 dùng 51.293 giá trị PHRED hợp lệ của train. Hình 1 đo sự đồng thời thiếu của hai thang. Hình 3 đo tương quan thứ hạng của các giá trị cùng có điểm. [Thống kê bộ cơ sở](../data/report.json) · [Schema mốc](../feature_study/pipeline/input_columns.json) · [Quy tắc điền thiếu](../preprocess.py)
 
 <!-- pagebreak -->
 
@@ -183,6 +183,8 @@ AP lớp 1 bình quân 5 fold toàn tập train. So với A bằng tiêu chí �
 
 ## AP và ngưỡng quyết định lớp
 
+Random Forest đạt AP 0,4957 và F1 ngoài fold 0,5383. Với Logistic Regression, hai chỉ số tương ứng là 0,4208 và 0,5053.
+
 AP lớp 1 dùng để chọn feature. Sau khi cố định cấu hình, chọn một ngưỡng cho mỗi mô hình bằng cách tối đa hóa F1 lớp 1 trên xác suất ngoài fold của toàn bộ train. Khi nhiều ngưỡng có cùng F1, lấy ngưỡng cao nhất. F1 trên tập xác suất dùng để chọn ngưỡng được ghi riêng.
 
 | Mô hình | AP CV | Ngưỡng OOF | F1 chọn ngưỡng | Precision ngoài | Recall ngoài | F1 ngoài |
@@ -197,6 +199,8 @@ AP là trung bình 5 fold theo biến thể. Precision, recall và F1 ngoài đ�
 <!-- pagebreak -->
 
 ## Phân tích các biến thể bị bỏ sót
+
+Trong 2.978 biến thể lớp 1 có cả ba tần suất alen bằng 0, Random Forest bỏ sót 2.107 trường hợp (70,8%) và Logistic Regression bỏ sót 2.437 trường hợp (81,8%).
 
 | Phép phân nhóm | Mô hình | Tỷ lệ bỏ sót cao nhất | Nhiều ca bỏ sót nhất |
 | --- | --- | --- | --- |
@@ -214,6 +218,8 @@ Mỗi ô ghi FN/số mẫu CLASS=1 trong nhóm và tỷ lệ bỏ sót FN/(TP+FN
 <!-- pagebreak -->
 
 ## Đánh giá trên vị trí nhiễm sắc thể mới
+
+Khi đánh giá tại vị trí chưa gặp, Random Forest đạt AP 0,4926 và F1 0,5401. Hai chỉ số của Logistic Regression đều thay đổi dưới 0,001.
 
 | Mô hình | Cách chia | AP | Precision | Recall | F1 |
 | --- | --- | --- | --- | --- | --- |
@@ -293,7 +299,7 @@ AP CLASS=1 đo một lần trên test lịch sử 13.038 dòng, gồm 3.287 mẫ
 
 Trên 52.150 dòng train, đếm theo hai trường phân số hợp lệ cho 44.988 chỉ exon, 7.035 chỉ intron, 31 có cả hai và 96 chưa xác định. Nhóm chưa xác định gồm dòng thiếu cả hai trường hợp lệ. [Số đếm vùng và lỗi cú pháp](audit_train.csv)
 
-Cả 22 kiểm thử đều đạt trong lần bàn giao. Bốn ma trận khớp từng phần tử khi đọc lại CSV và nạp lại preprocessor. Mã dòng và nhãn căn đúng thứ tự, khóa biến thể giữa train và test tách biệt, tên cột duy nhất và dữ liệu ma trận hữu hạn. [Kiểm tra đầu ra](../study_retained.py) · [Từ điển cột](column_dictionary.csv)
+Cả 27 kiểm thử đều đạt trong lần bàn giao. Bốn ma trận khớp từng phần tử khi đọc lại CSV và nạp lại preprocessor. Mã dòng và nhãn căn đúng thứ tự, khóa biến thể giữa train và test tách biệt, tên cột duy nhất và dữ liệu ma trận hữu hạn. [Kiểm tra đầu ra](../study_retained.py) · [Từ điển cột](column_dictionary.csv)
 
 ORIGIN được lưu để kiểm tra, với các bit quan sát khớp header GRCh37 tham chiếu. Phiên bản VCF gốc và thời điểm ORIGIN có sẵn khi dự đoán cần xác minh. CLNDN được giữ trong bảng sạch với trạng thái chỉ placeholder, có cả placeholder và tên bệnh, hoặc có tên bệnh. SYMBOL dùng để chia fold theo gene. [Đối chiếu mã ORIGIN](origin_train.csv) · [Phụ lục quyết định đủ 46 cột](QUYET_DINH_46_COT.md)
 
