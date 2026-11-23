@@ -35,10 +35,16 @@ def main() -> None:
     OUT.mkdir(exist_ok=True)
     FIG.mkdir(parents=True, exist_ok=True)
     df = pd.read_csv(DATA, na_values=["nan", "NaN", "", "."])
+    required = set(FEATURES + ["CLASS"])
+    missing = sorted(required.difference(df.columns))
+    if missing:
+        raise ValueError(f"CSV thiếu các cột bắt buộc: {missing}")
     X = df[FEATURES].copy()
     for col in NUMERIC:
         X[col] = pd.to_numeric(X[col], errors="coerce")
     y = pd.to_numeric(df["CLASS"], errors="raise").astype(int)
+    if set(y.unique()) != {0, 1}:
+        raise ValueError("CLASS phải có đúng hai nhãn 0 và 1.")
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.20, random_state=42, stratify=y
     )
@@ -121,10 +127,15 @@ def main() -> None:
         "split": {"method": "train_test_split(stratify=y)", "test_size": 0.2, "random_state": 42,
                   "train_rows": len(y_train), "test_rows": len(y_test),
                   "train_positive_rate": float(y_train.mean()), "test_positive_rate": float(y_test.mean())},
-        "cv": {"method": "StratifiedKFold", "folds": 5, "best_average_precision": float(search.best_score_)},
+        "cv": {"method": "StratifiedKFold", "folds": 5,
+               "selection_score": "average_precision",
+               "best_average_precision": float(search.best_score_),
+               "interpretation": "Điểm chọn cấu hình; có thể lạc quan do đã chọn giá trị cao nhất trong 12 cấu hình."},
         "best_params": search.best_params_, "train_metrics": metrics(y_train, pred_train, p_train),
         "test_metrics": metrics(y_test, pred_test, p_test), "confusion_matrix": cm.tolist(),
         "threshold": 0.5,
+        "test_prevalence_baseline_ap": float(y_test.mean()),
+        "evaluation_scope": "Hold-out ngẫu nhiên theo dòng; không đảm bảo tách gene hoặc nhóm biến thể giữa train và test.",
         "learning_curve": {"train_sizes": sizes.tolist(), "train_ap_mean": train_scores.mean(axis=1).tolist(),
                            "validation_ap_mean": cv_scores.mean(axis=1).tolist()},
         "top_features": [{"name": str(k), "importance": float(v)} for k,v in imp.sort_values(ascending=False).items()],
