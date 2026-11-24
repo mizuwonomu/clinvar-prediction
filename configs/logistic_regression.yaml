@@ -1,0 +1,59 @@
+model: LogisticRegression
+input_set: af_log+af_zero+consequence_rare
+fixed:
+  solver: liblinear
+  max_iter: 3000
+  random_state: 42
+baseline:
+  C: 1.0
+  penalty: l2
+  class_weight: null
+  solver: liblinear
+rounds:
+  - name: solver_diagnostic
+    type: diagnostic
+    description: Compare legacy lbfgs and official liblinear; this is not solver tuning.
+    params:
+      C: 1.0
+      penalty: l2
+      class_weight: null
+      max_iter: 3000
+      random_state: 42
+    solvers:
+      - lbfgs
+      - liblinear
+  - name: C_search
+    type: tuning
+    reason: Initial complexity search required by model_selection_contract.md.
+    parameter: C
+    values: [0.0001, 0.001, 0.01, 0.1, 1.0, 10.0, 100.0]
+    hold_fixed:
+      penalty: l2
+      class_weight: null
+  - name: penalty_search
+    type: tuning
+    reason: Tune penalty after selecting C; keep all other parameters fixed.
+    parameter: penalty
+    values: [l2, l1]
+    uses_selected: [C]
+    hold_fixed:
+      class_weight: null
+  - name: class_weight_search
+    type: tuning
+    reason: Tune class_weight after selecting C and penalty.
+    parameter: class_weight
+    values: [null, balanced]
+    uses_selected: [C, penalty]
+simplicity_order:
+  C: ascending
+  penalty: [l2, l1]
+  class_weight: [null, balanced]
+selection:
+  metric: average_precision
+  positive_label: 1
+  tolerance_floor: 0.002
+  minimum_folds_up_vs_baseline: 4
+  total_configuration_budget: 60
+  maximum_edge_expansions: 2
+  stop_if_interior_and_round_gain_below: 0.002
+final: null

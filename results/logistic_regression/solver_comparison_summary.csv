@@ -1,0 +1,8 @@
+record_type,solver,fold,mean_valid_ap,std_valid_ap,se_valid_ap,mean_valid_logloss,converged_folds,delta_ap_liblinear_minus_lbfgs
+solver_summary,lbfgs,,0.42078090731347884,0.006275461430375568,0.0028064716696995667,0.5083715434480103,5.0,
+solver_summary,liblinear,,0.4207789227669562,0.006223194090066498,0.0027830970045127274,0.5083466968327798,5.0,
+paired_fold_delta,liblinear_minus_lbfgs,1.0,,,,,,-0.00032102966365865626
+paired_fold_delta,liblinear_minus_lbfgs,2.0,,,,,,1.2309378816799388e-05
+paired_fold_delta,liblinear_minus_lbfgs,3.0,,,,,,0.0001497755524947908
+paired_fold_delta,liblinear_minus_lbfgs,4.0,,,,,,-6.3725052921626e-05
+paired_fold_delta,liblinear_minus_lbfgs,5.0,,,,,,0.0002127470526559483
