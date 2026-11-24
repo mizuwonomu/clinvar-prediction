@@ -1,0 +1,2 @@
+model,config_id,params,threshold,n_test,accuracy,precision,recall,f1,ap,roc_auc,log_loss,tn,fp,fn,tp,git_commit,seed
+RandomForest,"n_estimators=80,max_depth=16,min_samples_leaf=5,max_features=0.2","{""max_depth"": 16, ""max_features"": 0.2, ""min_samples_leaf"": 5, ""n_estimators"": 80}",0.4834694116318077,13038,0.697499616505599,0.4398241436160469,0.7304533008822635,0.5490509947404528,0.5052986310309465,0.7760554353446452,0.552974408110017,6693,3058,886,2401,4fbbe0b,42

@@ -5,4 +5,7 @@ scikit-learn
 matplotlib
 joblib
 threadpoolctl
+pyyaml
+python-docx
+seaborn
 python-docx

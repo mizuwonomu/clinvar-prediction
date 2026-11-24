@@ -1,0 +1,94 @@
+model: RandomForest
+input_set: selected
+fixed:
+  random_state: 42
+  n_jobs: -1
+  class_weight: balanced
+  bootstrap: true
+  oob_score: true
+baseline:
+  n_estimators: 80
+  max_depth: 16
+  min_samples_leaf: 5
+  max_features: 6
+rounds:
+- name: n_estimators
+  reason: Initial curve from 50 to 1000 trees; choose the first value before the curve
+    gains less than 0.002.
+  param: n_estimators
+  values:
+  - 50
+  - 100
+  - 200
+  - 400
+  - 600
+  - 800
+  - 1000
+- name: min_samples_leaf
+  reason: Initial contract grid; larger leaves are simpler.
+  param: min_samples_leaf
+  values:
+  - 1
+  - 2
+  - 5
+  - 10
+  - 20
+  - 50
+- name: max_features
+  reason: Initial contract grid; smaller feature subsets are simpler.
+  param: max_features
+  values:
+  - sqrt
+  - 0.2
+  - 0.3
+  - 0.5
+- name: max_depth
+  reason: Initial contract grid; shallower trees are simpler.
+  param: max_depth
+  values:
+  - null
+  - 8
+  - 12
+  - 16
+  - 24
+simplicity_order:
+  n_estimators:
+  - 50
+  - 100
+  - 200
+  - 400
+  - 600
+  - 800
+  - 1000
+  min_samples_leaf:
+  - 50
+  - 20
+  - 10
+  - 5
+  - 2
+  - 1
+  max_features:
+  - sqrt
+  - 0.2
+  - 0.3
+  - 0.5
+  max_depth:
+  - 8
+  - 12
+  - 16
+  - 24
+  - null
+selection:
+  tolerance_floor: 0.002
+  min_gain_over_baseline: 0.002
+  min_folds_up_vs_baseline: 4
+final:
+  params:
+    max_depth: 16
+    max_features: 0.2
+    min_samples_leaf: 5
+    n_estimators: 80
+  threshold: 0.4834694116318077
+  selection_config_id: n_estimators=80,max_depth=16,min_samples_leaf=5,max_features=0.2
+  cv_ap: 0.4996448847784187
+  cv_ap_se: 0.002108938857371725
