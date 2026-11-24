@@ -84,11 +84,12 @@ selection:
   min_folds_up_vs_baseline: 4
 final:
   params:
-    max_depth: 16
+    max_depth: 24
     max_features: 0.2
     min_samples_leaf: 5
-    n_estimators: 80
-  threshold: 0.4834694116318077
-  selection_config_id: n_estimators=80,max_depth=16,min_samples_leaf=5,max_features=0.2
-  cv_ap: 0.4996448847784187
-  cv_ap_se: 0.002108938857371725
+    n_estimators: 100
+  threshold: 0.5125843002535391
+  selection_config_id: n_estimators=100,max_depth=24,min_samples_leaf=5,max_features=0.2
+    [max_depth]
+  cv_ap: 0.505900430380606
+  cv_ap_se: 0.002843767512963136

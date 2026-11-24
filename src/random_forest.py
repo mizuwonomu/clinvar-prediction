@@ -170,14 +170,60 @@ def _make_configs(cfg):
 def run_cv(output_dir=None, config_path=None):
     cfg = load_config(config_path)
     X, y, folds = load_train()
-    frame, probs = _evaluate(X, y, folds, cfg, _make_configs(cfg))
+    baseline = dict(cfg["baseline"])
+    baseline_id = _id(baseline)
+    frame, probs = _evaluate(X, y, folds, cfg, [(baseline_id, baseline, "baseline")])
+    current = dict(baseline)
+    current_id = baseline_id
+    for rnd in cfg["rounds"]:
+        param = rnd["param"]
+        candidates = []
+        for value in rnd["values"]:
+            params = dict(current); params[param] = value
+            candidate_id = f"{_id(params)} [{rnd['name']}]"
+            candidates.append((candidate_id, params, rnd["name"]))
+        round_frame, round_probs = _evaluate(X, y, folds, cfg, candidates)
+        frame = pd.concat([frame, round_frame], ignore_index=True)
+        probs.update(round_probs)
+        stats = _summary(round_frame)
+        best_mean = float(stats.valid_ap_mean.max())
+        best_row = stats.loc[stats.valid_ap_mean.idxmax()]
+        tolerance = max(float(best_row.valid_ap_se), float(cfg["selection"]["tolerance_floor"]))
+        eligible = stats.loc[stats.valid_ap_mean >= best_mean - tolerance]
+        order = cfg["simplicity_order"][param]
+        def rank_value(raw):
+            value = json.loads(raw)[param]
+            return next((i for i, option in enumerate(order) if option == value), len(order))
+        if param == "n_estimators":
+            # RF trees reduce variance; use the first point before the next gain flattens.
+            means = stats.set_index(stats.params.map(lambda raw: json.loads(raw)[param])).valid_ap_mean.to_dict()
+            chosen_value = order[-1]
+            values = rnd["values"]
+            for index in range(len(values) - 1):
+                if means[values[index + 1]] - means[values[index]] < float(cfg["selection"]["tolerance_floor"]):
+                    chosen_value = values[index]
+                    break
+            if chosen_value not in [json.loads(raw)[param] for raw in eligible.params]:
+                chosen_value = json.loads(min(eligible.params, key=rank_value))[param]
+        else:
+            chosen_value = json.loads(min(eligible.params, key=rank_value))[param]
+        current[param] = chosen_value
+        current_id = next(cid for cid, candidate, _ in candidates if candidate[param] == chosen_value)
     out = Path(output_dir) if output_dir else ROOT / "results" / NAME
     out.mkdir(parents=True, exist_ok=True)
     frame.to_csv(out / "cv_folds.csv", index=False)
     summary = _summary(frame)
     summary.attrs["folds_frame"] = frame
     baseline_id = _id(cfg["baseline"])
-    selected = select_configuration(summary, baseline_id, cfg)
+    selected_id = current_id
+    baseline_fold = folds_for(frame, baseline_id)
+    chosen_fold = folds_for(frame, selected_id)
+    gain = float(chosen_fold.valid_ap.mean() - baseline_fold.valid_ap.mean())
+    wins = int((chosen_fold.valid_ap.to_numpy() > baseline_fold.valid_ap.to_numpy()).sum())
+    if selected_id != baseline_id and (gain < float(cfg["selection"]["min_gain_over_baseline"])
+                                       or wins < int(cfg["selection"]["min_folds_up_vs_baseline"])):
+        selected_id = baseline_id
+    selected = summary.loc[summary.config_id == selected_id].iloc[0]
     summary["folds_up_vs_baseline"] = summary.config_id.map(lambda c: int((folds_for(frame, c).valid_ap.to_numpy() > folds_for(frame, baseline_id).valid_ap.to_numpy()).sum()))
     summary.to_csv(out / "cv_summary.csv", index=False)
     return cfg, X, y, folds, frame, summary, selected, probs, out
