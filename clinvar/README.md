@@ -128,17 +128,7 @@ python feature_study.py cv --out feature_study_repro
 
 Hai lệnh trên tạo heatmap trước khi so sánh và ghi cấu hình cùng ngưỡng đã khóa vào `locked.json`. Kết quả test đã có trong thư mục báo cáo. Lệnh `python feature_study.py holdout --out <thư_mục>` dành cho thư mục có cấu hình đã khóa và chưa có kết quả test.
 
-Ví dụ nạp mô hình đã xuất và dự đoán trên các cột đã chuẩn bị. Áp ngưỡng `thresholds_oof_f1.selected.RandomForest` trong `locked.json` nếu cần chuyển xác suất thành nhãn nhị phân.
-
-```python
-import joblib
-import pandas as pd
-
-X = pd.read_csv("feature_study/pipeline/X_train.csv", index_col="source_row",
-                float_precision="round_trip")
-model = joblib.load("feature_study/pipeline/model_RandomForest.joblib")
-probability = model.predict_proba(X)[:, 1]
-```
+Hai tệp mô hình thử nghiệm được tạo cục bộ khi chạy bước `holdout`. Để huấn luyện mô hình của nhóm, dùng ma trận và nhãn ở mục bên dưới.
 
 ## Bảng sạch trước nội suy và bộ đầu vào theo mô hình
 

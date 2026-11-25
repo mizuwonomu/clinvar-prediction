@@ -3,3 +3,4 @@ __pycache__/
 .pytest_cache/
 .venv/
 ~$*.docx
+/feature_study/pipeline/model_*.joblib
