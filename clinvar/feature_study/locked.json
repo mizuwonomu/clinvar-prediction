@@ -1,0 +1,70 @@
+{
+  "selected": "combined_without_mc",
+  "encoding": "onehot",
+  "arms": [
+    "lof_values",
+    "protein_flags",
+    "transcript",
+    "cadd_raw"
+  ],
+  "components_screened_in_combination": [
+    "lof_values",
+    "protein_flags",
+    "transcript",
+    "cadd_raw",
+    "mc"
+  ],
+  "threshold": 0.5,
+  "seed": 42,
+  "models": {
+    "LogisticRegression": {
+      "C": 1.0,
+      "class_weight": null,
+      "dual": false,
+      "fit_intercept": true,
+      "intercept_scaling": 1,
+      "l1_ratio": null,
+      "max_iter": 3000,
+      "multi_class": "deprecated",
+      "n_jobs": null,
+      "penalty": "l2",
+      "random_state": 42,
+      "solver": "lbfgs",
+      "tol": 0.0001,
+      "verbose": 0,
+      "warm_start": false
+    },
+    "RandomForest": {
+      "bootstrap": true,
+      "ccp_alpha": 0.0,
+      "class_weight": null,
+      "criterion": "gini",
+      "max_depth": 16,
+      "max_features": 6,
+      "max_leaf_nodes": null,
+      "max_samples": null,
+      "min_impurity_decrease": 0.0,
+      "min_samples_leaf": 5,
+      "min_samples_split": 2,
+      "min_weight_fraction_leaf": 0.0,
+      "monotonic_cst": null,
+      "n_estimators": 80,
+      "n_jobs": 6,
+      "oob_score": false,
+      "random_state": 42,
+      "verbose": 0,
+      "warm_start": false
+    }
+  },
+  "selection": "AP toàn tập; ít nhất một mô hình ΔAP ≥ 0.002, 4/5 fold tăng, ΔAP vượt SE, và cả hai mô hình ΔAP ≥ -0.002; lấy ΔAP trung bình hai mô hình cao nhất.",
+  "thresholds_oof_f1": {
+    "baseline_onehot": {
+      "LogisticRegression": 0.25293631738817446,
+      "RandomForest": 0.27039128336037355
+    },
+    "selected": {
+      "LogisticRegression": 0.22793712097764965,
+      "RandomForest": 0.28439343604932077
+    }
+  }
+}

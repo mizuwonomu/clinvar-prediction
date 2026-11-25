@@ -1,0 +1,10 @@
+{
+  "LogisticRegression": {
+    "baseline": "af_log+af_zero+consequence_rare",
+    "selected_arm": "A"
+  },
+  "RandomForest": {
+    "baseline": "consequence_rare",
+    "selected_arm": "A"
+  }
+}

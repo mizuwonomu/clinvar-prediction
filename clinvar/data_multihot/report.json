@@ -1,0 +1,168 @@
+{
+  "raw_shape": [
+    65188,
+    46
+  ],
+  "raw_exact_duplicate_rows_after_first": 0,
+  "raw_keys": {
+    "distinct_valid": 65188,
+    "repeated_keys": 0,
+    "rows_in_repeated_keys": 0,
+    "keys_with_both_classes": 0
+  },
+  "raw_class_valid_labels": {
+    "0": {
+      "count": 48754,
+      "share": 0.7478983862060502
+    },
+    "1": {
+      "count": 16434,
+      "share": 0.2521016137939498
+    }
+  },
+  "invalid_key_rows": 0,
+  "invalid_label_rows": 0,
+  "rows_excluded": 0,
+  "clean_shape": [
+    65188,
+    8
+  ],
+  "invalid_numeric_to_missing_after_exclusions": {
+    "AF_ESP": 0,
+    "AF_EXAC": 0,
+    "AF_TGP": 0,
+    "CADD_PHRED": 0
+  },
+  "input_file": "clinvar_conflicting.csv",
+  "input_sha256": "53061e207d437af397028760be5bc566d216f6932e21db5a10322b843c41689a",
+  "features": [
+    "AF_ESP",
+    "AF_EXAC",
+    "AF_TGP",
+    "CADD_PHRED",
+    "CLNVC",
+    "Consequence",
+    "IMPACT",
+    "BIOTYPE"
+  ],
+  "split_method": "train_test_split stratified (unique variant keys)",
+  "random_state": 42,
+  "variant_overlap": 0,
+  "versions": {
+    "numpy": "2.2.6",
+    "pandas": "2.2.3",
+    "scipy": "1.15.3",
+    "scikit-learn": "1.6.1",
+    "joblib": "1.5.1"
+  },
+  "consequence_encoding": "multihot",
+  "splits": {
+    "train": {
+      "shape_before_transform": [
+        52150,
+        8
+      ],
+      "share_of_rows": 0.7999938639013315,
+      "classes": {
+        "0": {
+          "count": 39003,
+          "share": 0.7479002876318313
+        },
+        "1": {
+          "count": 13147,
+          "share": 0.25209971236816875
+        }
+      },
+      "distinct_variants": 52150,
+      "missing_before_transform": {
+        "AF_ESP": 0,
+        "AF_EXAC": 0,
+        "AF_TGP": 0,
+        "CADD_PHRED": 857,
+        "CLNVC": 0,
+        "Consequence": 0,
+        "IMPACT": 0,
+        "BIOTYPE": 8
+      }
+    },
+    "test": {
+      "shape_before_transform": [
+        13038,
+        8
+      ],
+      "share_of_rows": 0.20000613609866846,
+      "classes": {
+        "0": {
+          "count": 9751,
+          "share": 0.7478907807946004
+        },
+        "1": {
+          "count": 3287,
+          "share": 0.2521092192053996
+        }
+      },
+      "distinct_variants": 13038,
+      "missing_before_transform": {
+        "AF_ESP": 0,
+        "AF_EXAC": 0,
+        "AF_TGP": 0,
+        "CADD_PHRED": 235,
+        "CLNVC": 0,
+        "Consequence": 0,
+        "IMPACT": 0,
+        "BIOTYPE": 8
+      }
+    }
+  },
+  "preprocessors": {
+    "scaled": {
+      "matrix_shapes": {
+        "train": [
+          52150,
+          42
+        ],
+        "test": [
+          13038,
+          42
+        ]
+      },
+      "train_imputation_values": {
+        "AF_ESP": 0.0,
+        "AF_EXAC": 5e-05,
+        "AF_TGP": 0.0,
+        "CADD_PHRED": 14.06
+      },
+      "unseen_category_check": "pass"
+    },
+    "unscaled": {
+      "matrix_shapes": {
+        "train": [
+          52150,
+          42
+        ],
+        "test": [
+          13038,
+          42
+        ]
+      },
+      "train_imputation_values": {
+        "AF_ESP": 0.0,
+        "AF_EXAC": 5e-05,
+        "AF_TGP": 0.0,
+        "CADD_PHRED": 14.06
+      },
+      "unseen_category_check": "pass"
+    }
+  },
+  "checks": {
+    "split_reproducible": "pass",
+    "both_classes_in_each_split": "pass",
+    "all_clean_rows_partitioned": "pass",
+    "variant_group_overlap_zero": "pass",
+    "feature_allowlist": "pass",
+    "row_alignment_on_reload": "pass",
+    "finite_transformed_values": "pass",
+    "same_transformed_schema": "pass",
+    "reloaded_pipeline_matches_saved_matrices": "pass"
+  }
+}

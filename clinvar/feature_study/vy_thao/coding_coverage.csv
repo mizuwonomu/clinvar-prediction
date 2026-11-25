@@ -1,0 +1,9 @@
+transcript_region,coding_fields_missing,missense,n
+exon,0,True,25892
+exon,0,False,18232
+intron,4,False,7035
+exon,4,False,860
+unresolved,4,False,90
+exon_and_intron,2,False,31
+unresolved,0,False,6
+exon,2,False,4

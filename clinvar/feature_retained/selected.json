@@ -1,0 +1,12 @@
+{
+  "LogisticRegression": {
+    "configuration": "af_log+af_zero+consequence_rare",
+    "input_columns": 27,
+    "encoded_columns": 56
+  },
+  "RandomForest": {
+    "configuration": "consequence_rare",
+    "input_columns": 24,
+    "encoded_columns": 53
+  }
+}
