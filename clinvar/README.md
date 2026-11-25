@@ -132,6 +132,13 @@ Hai tệp mô hình thử nghiệm được tạo cục bộ khi chạy bước 
 
 ## Bảng sạch trước nội suy và bộ đầu vào theo mô hình
 
+| Thư mục hoặc tệp | Nhóm dùng khi nào |
+|---|---|
+| `feature_retained/` | Khi train, đọc các bảng `clean_*`, `y_*`, `ids_*` và `fold_assignments.csv`. Tra cấu hình trong `selected.json`, ý nghĩa cột trong `column_dictionary.csv` và quyết định cho từng trường gốc trong `QUYET_DINH_46_COT.md`. |
+| `feature_retained/LogisticRegression/`, `feature_retained/RandomForest/` | Mỗi thư mục cung cấp danh sách cột đầu vào, tên đặc trưng sau biến đổi và bộ tiền xử lý đã fit trên train cho mô hình tương ứng. |
+| `data/`, `data_multihot/`, `feature_study/pipeline/` | Dùng khi tái tạo bảng sạch và đối chiếu với các bộ dữ liệu mốc. |
+| `feature_study/` | `locked.json` lưu cấu hình mốc. Các bảng `cv_fold_metrics.csv`, `gene_fold_metrics.csv`, `fold_assignments.csv` và CSV trong `vy_thao/` phục vụ đối chiếu theo fold. Hai bảng `holdout_*.csv` ghi kết quả lần đánh giá trước trên tập test. |
+
 Chạy `python study_retained.py` trong thư mục `clinvar` để xuất vào `feature_retained/`. Có thể truyền `--out` để chọn thư mục khác. Lệnh dùng lại source_row, nhãn và fold đã chốt, chọn đặc trưng bằng CV trên train và dùng test để xuất ma trận đầu vào. [Báo cáo và tệp bàn giao](feature_retained/BAO_CAO.md)
 
 Sau khi có bộ đầu vào đã khóa, chạy `python study_endpoints.py` để so sánh cách xử lý từng mút tọa độ và đánh giá ngưỡng F1 bằng CV lồng trên train. Chạy `python retained_publication.py` để đưa các kết quả đó vào báo cáo. [Kết quả theo fold](feature_retained/endpoint_review/cv_folds.csv) · [AP, ngưỡng và F1](feature_retained/endpoint_review/operating_metrics.csv)
